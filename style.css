@@ -442,6 +442,7 @@ h1, h2, h3 {
     radial-gradient(circle at 80% 70%, rgba(91, 107, 122, 0.08) 0%, transparent 45%),
     var(--bg);
 }
+.auth-screen[hidden] { display: none; }
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--line);
