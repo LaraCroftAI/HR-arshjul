@@ -8,11 +8,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 </head>
 <body>
+  <!-- Login screen — shown when no user is signed in -->
+  <div id="authScreen" class="auth-screen" hidden>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark">○</span>
+        <span class="brand-name">HR Årshjul</span>
+      </div>
+      <h1 class="auth-title">Välkommen</h1>
+      <p class="auth-sub">Skriv din mejladress så skickar vi en länk för att logga in. Inget lösenord behövs.</p>
+      <form id="authForm" class="auth-form">
+        <input id="authEmail" type="email" required placeholder="namn@exempel.se" autocomplete="email" />
+        <button class="btn btn-primary btn-block" type="submit" id="authSubmitBtn">Skicka inloggningslänk</button>
+      </form>
+      <div id="authMessage" class="auth-message" hidden></div>
+    </div>
+  </div>
+
+  <!-- App — shown when signed in -->
+  <div id="appScreen" hidden>
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
@@ -39,6 +59,10 @@
             <button class="dropdown-item" data-format="pdf">Som PDF</button>
             <button class="dropdown-item" data-format="ppt">Som PowerPoint</button>
           </div>
+        </div>
+        <div class="user-block">
+          <span id="userEmail" class="user-email"></span>
+          <button id="logoutBtn" class="btn btn-ghost btn-small" type="button">Logga ut</button>
         </div>
         <input id="fileInput" type="file" accept="image/png" hidden />
       </div>
@@ -77,6 +101,8 @@
       <div class="legend" id="legend"></div>
     </section>
   </main>
+
+  </div><!-- /#appScreen -->
 
   <div id="toast" class="toast" hidden></div>
 

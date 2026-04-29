@@ -2,6 +2,12 @@
 // HR Årshjul — interactive year wheel builder
 // ====================================================================
 
+// Supabase project (anon publishable key — safe to ship, RLS enforces privacy)
+const SUPABASE_URL = 'https://afcagjgztvmdpeljrjru.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__QjXJj6z2J2FaCyWvRVSWg_pbiIbHiI';
+let sb = null;
+let currentUser = null;
+
 const STORAGE_KEY = 'hr-arshjul-v1';
 
 const RING_PALETTE = [
@@ -18,7 +24,8 @@ const RING_PALETTE = [
 const MONTHS_SV = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
 
 // ---------- State ----------
-let state = loadState() || defaultState();
+// Start with defaults; real wheel is fetched from Supabase after login.
+let state = defaultState();
 
 function defaultState() {
   return {
@@ -53,15 +60,22 @@ function rid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
+// Wheel persistence — writes go to Supabase (debounced) when signed in.
+let saveTimer = null;
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToSupabase, 800);
+}
+async function saveToSupabase() {
+  if (!sb || !currentUser) return;
+  try {
+    const { error } = await sb
+      .from('wheels')
+      .upsert({ user_id: currentUser.id, data: state }, { onConflict: 'user_id' });
+    if (error) console.error('Supabase save error:', error);
+  } catch (err) {
+    console.error('Supabase save threw:', err);
+  }
 }
 
 // ---------- Element refs ----------
@@ -949,6 +963,125 @@ function hexToRgb(hex) {
   };
 }
 
+// ====================================================================
+// Authentication — magic link via Supabase, one wheel per user
+// ====================================================================
+async function initAuth() {
+  if (typeof supabase === 'undefined') {
+    showAuthMessage('Inloggningstjänsten kunde inte laddas. Kontrollera nätet och ladda om sidan.', true);
+    showLoginScreen();
+    return;
+  }
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  setupAuthHandlers();
+
+  sb.auth.onAuthStateChange(async (_event, session) => {
+    if (session && session.user) await onSignedIn(session.user);
+    else onSignedOut();
+  });
+
+  const { data } = await sb.auth.getSession();
+  if (data.session && data.session.user) {
+    await onSignedIn(data.session.user);
+  } else {
+    onSignedOut();
+  }
+}
+
+function setupAuthHandlers() {
+  $('authForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!sb) return;
+    const email = $('authEmail').value.trim();
+    if (!email) return;
+    const submitBtn = $('authSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Skickar...';
+    showAuthMessage('', false);
+    try {
+      const { error } = await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      });
+      if (error) throw error;
+      showAuthMessage(`Vi har skickat en länk till ${email}. Klicka på länken i mejlet (kolla även skräpposten).`, false);
+    } catch (err) {
+      showAuthMessage('Kunde inte skicka länken: ' + (err.message || err), true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Skicka inloggningslänk';
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    if (!sb) return;
+    await sb.auth.signOut();
+  });
+}
+
+async function onSignedIn(user) {
+  currentUser = user;
+  showAppScreen(user);
+  await loadUserWheel(user.id);
+}
+
+function onSignedOut() {
+  currentUser = null;
+  state = defaultState();
+  showLoginScreen();
+}
+
+function showAppScreen(user) {
+  $('authScreen').hidden = true;
+  $('appScreen').hidden = false;
+  $('userEmail').textContent = user.email || '';
+}
+function showLoginScreen() {
+  $('authScreen').hidden = false;
+  $('appScreen').hidden = true;
+  $('userEmail').textContent = '';
+}
+
+function showAuthMessage(text, isError) {
+  const el = $('authMessage');
+  if (!text) { el.hidden = true; el.classList.remove('is-error'); return; }
+  el.textContent = text;
+  el.hidden = false;
+  el.classList.toggle('is-error', !!isError);
+}
+
+async function loadUserWheel(userId) {
+  try {
+    const { data, error } = await sb
+      .from('wheels')
+      .select('data')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data && data.data && Array.isArray(data.data.rings)) {
+      state = data.data;
+    } else {
+      // First sign-in: keep the freshly built default state and push it up.
+      state = defaultState();
+      if (state.activities.length && state.activities[0].ringId === null) {
+        state.activities[0].ringId = state.rings[1].id;
+        state.activities[1].ringId = state.rings[2].id;
+        state.activities[2].ringId = state.rings[0].id;
+        state.activities[3].ringId = state.rings[0].id;
+        state.activities[4].ringId = state.rings[1].id;
+      }
+      saveState();
+    }
+    clientNameInput.value = state.client || '';
+    clientYearInput.value = state.year || new Date().getFullYear();
+    renderAll();
+  } catch (err) {
+    console.error(err);
+    toast('Kunde inte hämta hjul från databasen');
+  }
+}
+
 // ---------- Upload PNG and restore project ----------
 async function handleFileUpload(e) {
   const file = e.target.files && e.target.files[0];
@@ -1081,4 +1214,4 @@ function readTextChunk(pngBytes, targetKeyword) {
 }
 
 // ---------- Boot ----------
-renderAll();
+initAuth();
