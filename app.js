@@ -1263,14 +1263,35 @@ async function runAdminDiagnostic() {
     }
   }
 
-  log.push('Testar olika endpoints (5 sek max per anrop):');
+  log.push('Testar olika vägar (5 sek max per anrop):');
   log.push('');
-  await test('GET wheels', { method: 'GET', url: SUPABASE_URL + '/rest/v1/wheels?select=user_id&limit=1' });
-  await test('GET admins', { method: 'GET', url: SUPABASE_URL + '/rest/v1/admins?select=user_id&limit=1' });
-  await test('GET allowed_emails', { method: 'GET', url: SUPABASE_URL + '/rest/v1/allowed_emails?select=email&limit=1' });
-  await test('POST rpc/whoami', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/whoami', body: '{}' });
-  await test('POST rpc/is_admin', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/is_admin', body: '{}' });
-  await test('POST rpc/admin_list_emails', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/admin_list_emails', body: '{}' });
+
+  // Vercel-proxyn (ny väg som SKA fungera)
+  const t0 = Date.now();
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ action: 'list' }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    const ms = Date.now() - t0;
+    const txt = (await res.text()).slice(0, 200);
+    log.push(`[VERCEL /api/admin] ${res.status} på ${ms}ms`);
+    log.push('  body: ' + txt);
+  } catch (err) {
+    const ms = Date.now() - t0;
+    log.push(`[VERCEL /api/admin] FEL på ${ms}ms - ${err.name}: ${err.message}`);
+  }
+
+  log.push('');
+
+  // Direkta Supabase-anrop (gamla vägen — testar om de funkar för dig nu)
+  await test('GET wheels (direkt)', { method: 'GET', url: SUPABASE_URL + '/rest/v1/wheels?select=user_id&limit=1' });
+  await test('POST rpc/whoami (direkt)', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/whoami', body: '{}' });
 
   alert(log.join('\n'));
 }
