@@ -1259,12 +1259,34 @@ async function onSignedIn(user) {
 
 let isAdmin = false;
 async function refreshAdminStatus() {
+  if (!sb || !currentUser) {
+    isAdmin = false;
+    $('adminBtn').hidden = true;
+    return;
+  }
   try {
-    const { data, error } = await sb.from('admins').select('user_id').limit(1);
-    isAdmin = !error && Array.isArray(data) && data.length > 0;
-  } catch { isAdmin = false; }
-  $('adminBtn').hidden = !isAdmin;
+    const { data, error } = await sb
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (error) {
+      // Network or RLS hiccup — keep whatever we showed before, don't yank the button away.
+      console.warn('refreshAdminStatus query error:', error);
+      return;
+    }
+    isAdmin = !!data;
+    $('adminBtn').hidden = !isAdmin;
+  } catch (err) {
+    console.warn('refreshAdminStatus exception:', err);
+  }
 }
+
+// Re-check admin status when the tab regains focus — covers the case where
+// the user came back to a stale tab and the previous check happened to fail.
+window.addEventListener('focus', () => {
+  if (currentUser) refreshAdminStatus().catch(() => {});
+});
 
 function onSignedOut() {
   currentUser = null;
@@ -1276,6 +1298,8 @@ function showAppScreen(user) {
   $('authScreen').hidden = true;
   $('appScreen').hidden = false;
   $('userEmail').textContent = user.email || '';
+  // Always re-check admin status when showing the app — never rely on the caller.
+  refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
 }
 function showLoginScreen() {
   $('authScreen').hidden = false;
