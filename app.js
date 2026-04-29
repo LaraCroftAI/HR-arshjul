@@ -82,6 +82,12 @@ clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.
 
 $('addRingBtn').addEventListener('click', addRing);
 $('addActivityBtn').addEventListener('click', addActivity);
+$('importActivitiesBtn').addEventListener('click', () => $('activitiesFileInput').click());
+$('activitiesFileInput').addEventListener('change', handleActivitiesImport);
+$('downloadTemplateLink').addEventListener('click', e => {
+  e.preventDefault();
+  downloadActivitiesTemplate();
+});
 setupRingDragAndDrop();
 $('newBtn').addEventListener('click', () => {
   if (!confirm('Börja om med ett tomt årshjul? Nuvarande hjul försvinner.')) return;
@@ -454,6 +460,140 @@ function toast(msg) {
   t.textContent = msg;
   t.hidden = false;
   setTimeout(() => { t.hidden = true; }, 1800);
+}
+
+// ---------- Import activities from XLSX/CSV ----------
+const COL_ALIASES = {
+  name:   ['aktivitet', 'aktiviteter', 'namn', 'activity', 'name', 'title'],
+  ring:   ['ring', 'kategori', 'category', 'tema', 'grupp'],
+  start:  ['startvecka', 'vecka', 'start', 'startweek', 'week'],
+  length: ['längd', 'langd', 'veckor', 'length', 'duration', 'weeks', 'längd (veckor)'],
+};
+
+function findColumn(headers, aliases) {
+  for (let i = 0; i < headers.length; i++) {
+    const h = String(headers[i] || '').toLowerCase().trim();
+    if (aliases.some(a => h === a || h.startsWith(a))) return i;
+  }
+  return -1;
+}
+
+async function handleActivitiesImport(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (typeof XLSX === 'undefined') {
+    toast('Importbiblioteket laddar — försök igen om en stund');
+    return;
+  }
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    if (!ws) { toast('Filen verkar tom'); return; }
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
+    if (rows.length < 2) { toast('Hittade inga rader att importera'); return; }
+
+    const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
+    const nameCol  = findColumn(headers, COL_ALIASES.name);
+    const ringCol  = findColumn(headers, COL_ALIASES.ring);
+    const startCol = findColumn(headers, COL_ALIASES.start);
+    const lenCol   = findColumn(headers, COL_ALIASES.length);
+
+    if (nameCol === -1 || startCol === -1) {
+      toast('Filen saknar kolumn för Aktivitet eller Startvecka');
+      return;
+    }
+
+    const newRings = [];
+    const newActivities = [];
+    let skipped = 0;
+
+    const usedColors = () => [...state.rings, ...newRings].map(r => r.color);
+    const nextColor = () => RING_PALETTE.find(c => !usedColors().includes(c))
+      || RING_PALETTE[(state.rings.length + newRings.length) % RING_PALETTE.length];
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const name = String(row[nameCol] != null ? row[nameCol] : '').trim();
+      const ringName = ringCol >= 0 ? String(row[ringCol] != null ? row[ringCol] : '').trim() : '';
+      const startWeekRaw = row[startCol];
+      const lengthRaw = lenCol >= 0 ? row[lenCol] : 1;
+
+      const startWeek = parseInt(startWeekRaw, 10);
+      const lengthWeeks = Math.max(1, parseInt(lengthRaw, 10) || 1);
+
+      if (!name || isNaN(startWeek) || startWeek < 1 || startWeek > 52) { skipped++; continue; }
+
+      // Resolve ring: existing → previously created in this import → new
+      let ring = null;
+      if (ringName) {
+        const lc = ringName.toLowerCase();
+        ring = state.rings.find(r => r.name.toLowerCase() === lc)
+            || newRings.find(r => r.name.toLowerCase() === lc);
+        if (!ring) {
+          ring = { id: rid(), name: ringName, color: nextColor() };
+          newRings.push(ring);
+        }
+      } else if (state.rings.length) {
+        ring = state.rings[0];
+      } else if (newRings.length) {
+        ring = newRings[0];
+      } else {
+        // No ring at all — create a default
+        ring = { id: rid(), name: 'Allmänt', color: nextColor() };
+        newRings.push(ring);
+      }
+
+      newActivities.push({
+        id: rid(),
+        name,
+        ringId: ring.id,
+        startWeek: Math.min(52, Math.max(1, startWeek)),
+        lengthWeeks: Math.min(52, lengthWeeks),
+      });
+    }
+
+    if (newActivities.length === 0) {
+      toast('Inga giltiga rader hittades — kontrollera mallen');
+      return;
+    }
+
+    // Prepend so newest are on top, but preserve file order within the import
+    state.rings = [...newRings, ...state.rings];
+    state.activities = [...newActivities, ...state.activities];
+    saveState();
+    renderAll();
+
+    let msg = `${newActivities.length} aktiviteter importerade`;
+    if (newRings.length) msg += ` · ${newRings.length} nya ringar`;
+    if (skipped) msg += ` · ${skipped} hoppades över`;
+    toast(msg);
+  } catch (err) {
+    console.error(err);
+    toast('Kunde inte läsa filen — är det en xlsx eller csv?');
+  }
+}
+
+function downloadActivitiesTemplate() {
+  if (typeof XLSX === 'undefined') {
+    toast('Mall-biblioteket laddar — försök igen om en stund');
+    return;
+  }
+  const data = [
+    ['Aktivitet', 'Ring', 'Startvecka', 'Längd (veckor)'],
+    ['Lönesamtal', 'Lön & förmåner', 14, 3],
+    ['Utvecklingssamtal', 'Utveckling', 8, 4],
+    ['Sommarfest', 'Arbetsmiljö', 25, 1],
+    ['Kompetensutveckling Q3', 'Kompetensutveckling', 36, 6],
+    ['Successionsplan', 'Utveckling', 44, 6],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Aktiviteter');
+  XLSX.writeFile(wb, 'arshjul-mall.xlsx');
+  toast('Mall nedladdad');
 }
 
 // ---------- Drag-and-drop reorder of rings ----------

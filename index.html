@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -58,9 +59,13 @@
       <div class="panel-section">
         <div class="section-head">
           <h2>Aktiviteter</h2>
-          <button id="addActivityBtn" class="btn btn-small">+ Lägg till aktivitet</button>
+          <div class="section-actions">
+            <button id="importActivitiesBtn" class="btn btn-small">Importera</button>
+            <button id="addActivityBtn" class="btn btn-small">+ Lägg till</button>
+          </div>
         </div>
-        <p class="hint">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår.</p>
+        <p class="hint">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? <a href="#" id="downloadTemplateLink">Hämta mallen</a>.</p>
+        <input id="activitiesFileInput" type="file" accept=".xlsx,.xls,.csv" hidden />
         <ul id="activityList" class="activity-list"></ul>
       </div>
     </section>

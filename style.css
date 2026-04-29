@@ -207,6 +207,13 @@ h1, h2, h3 {
   font-size: 13px;
   color: var(--ink-soft);
 }
+.hint a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hint a:hover { color: var(--accent); }
+.section-actions { display: flex; gap: 6px; }
 
 /* ---------- Ring list ---------- */
 .ring-list, .activity-list {
