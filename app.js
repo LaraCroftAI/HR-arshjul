@@ -1271,12 +1271,17 @@ async function refreshAdminStatus() {
       .eq('user_id', currentUser.id)
       .maybeSingle();
     if (error) {
-      // Network or RLS hiccup — keep whatever we showed before, don't yank the button away.
       console.warn('refreshAdminStatus query error:', error);
-      return;
+      return; // keep prior state
     }
-    isAdmin = !!data;
-    $('adminBtn').hidden = !isAdmin;
+    if (data) {
+      // Confirmed admin — show and remember
+      isAdmin = true;
+      $('adminBtn').hidden = false;
+    }
+    // If data is null we don't flip back to non-admin. Empty results can come
+    // from a transient race (stale JWT, rate limit, etc.) and we don't want
+    // the button to disappear on the user once we've shown it.
   } catch (err) {
     console.warn('refreshAdminStatus exception:', err);
   }
@@ -1291,6 +1296,8 @@ window.addEventListener('focus', () => {
 function onSignedOut() {
   currentUser = null;
   state = defaultState();
+  isAdmin = false;
+  $('adminBtn').hidden = true;
   showLoginScreen();
 }
 
