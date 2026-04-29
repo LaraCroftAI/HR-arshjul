@@ -1069,11 +1069,12 @@ function setupAuthHandlers() {
         $('appScreen').hidden = false;
         $('userEmail').textContent = user.email || '';
         currentUser = user;
-        // Load wheel in background; don't block UI swap on it
+        // Load wheel + admin status in background; don't block UI swap on them
         loadUserWheel(user.id).catch(err => {
           console.error('loadUserWheel failed:', err);
           toast('Hjulet kunde inte laddas — försök ladda om sidan');
         });
+        refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
       } else {
         showAuthMessage('Inloggning gick igenom men sessionen kunde inte startas. Ladda om sidan och försök igen.', true);
       }
