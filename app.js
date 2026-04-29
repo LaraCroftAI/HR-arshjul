@@ -1471,16 +1471,18 @@ function showAuthMessage(text, isError) {
 }
 
 async function loadUserWheel(userId) {
-  // Step 1 — show local cache instantly so user keeps their work even if network fails.
+  // Local-first: a local cache always wins because remote sync may be unreliable
+  // in this user's network. Cross-device sync is a future concern.
   const local = loadLocal();
   if (local) {
     state = local;
     clientNameInput.value = state.client || '';
     clientYearInput.value = state.year || new Date().getFullYear();
     renderAll();
+    return; // skip remote — local is authoritative
   }
 
-  // Step 2 — try fetching from Supabase via native fetch (more resilient than supabase-js).
+  // No local cache — try Supabase as a starting point.
   let remote = null;
   try {
     const sessRes = await sb.auth.getSession();
@@ -1489,10 +1491,7 @@ async function loadUserWheel(userId) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?select=data,updated_at&user_id=eq.' + encodeURIComponent(userId), {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: 'Bearer ' + token,
-      },
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
       signal: ctrl.signal,
     });
     clearTimeout(timer);
@@ -1503,18 +1502,14 @@ async function loadUserWheel(userId) {
       }
     }
   } catch (err) {
-    console.warn('Wheel load failed (använder lokal kopia):', err.message || err);
+    console.warn('Wheel load failed (använder defaults):', err.message || err);
   }
 
-  // Step 3 — choose the source of truth.
   if (remote) {
     state = remote;
-    clientNameInput.value = state.client || '';
-    clientYearInput.value = state.year || new Date().getFullYear();
-    renderAll();
-    saveLocal(); // refresh local cache with remote
-  } else if (!local) {
-    // Neither remote nor local — start fresh with defaults.
+    saveLocal(); // seed the local cache with remote so we have it next time
+  } else {
+    // No remote, no local — fresh user, build defaults.
     state = defaultState();
     if (state.activities.length && state.activities[0].ringId === null) {
       state.activities[0].ringId = state.rings[1].id;
@@ -1523,12 +1518,11 @@ async function loadUserWheel(userId) {
       state.activities[3].ringId = state.rings[0].id;
       state.activities[4].ringId = state.rings[1].id;
     }
-    clientNameInput.value = '';
-    clientYearInput.value = state.year;
-    renderAll();
-    saveState(); // try to push to remote too
   }
-  // If only local, we already rendered it in step 1; nothing more to do.
+  clientNameInput.value = state.client || '';
+  clientYearInput.value = state.year || new Date().getFullYear();
+  renderAll();
+  saveState();
 }
 
 // ---------- Upload PNG and restore project ----------
