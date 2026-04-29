@@ -1042,15 +1042,16 @@ function setupAuthHandlers() {
     showAuthMessage('', false);
     try {
       if (authMode === 'signin') {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Successful sign-in fires onAuthStateChange — UI swaps to app there.
+        // Belt-and-suspenders: swap UI directly in case the auth-state event races.
+        if (data && data.user) await onSignedIn(data.user);
       } else {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        if (data.session) {
+        if (data.session && data.user) {
           // Account created and signed in immediately (email confirmation off)
-          // onAuthStateChange handles the rest.
+          await onSignedIn(data.user);
         } else {
           // Account created but waiting for email confirmation
           showAuthMessage(`Konto skapat. Vi har skickat ett bekräftelsemejl till ${email} — klicka på länken där och kom sedan tillbaka och logga in.`, false);
