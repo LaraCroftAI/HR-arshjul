@@ -21,13 +21,18 @@
         <span class="brand-mark">○</span>
         <span class="brand-name">HR Årshjul</span>
       </div>
-      <h1 class="auth-title">Välkommen</h1>
-      <p class="auth-sub">Skriv din mejladress så skickar vi en länk för att logga in. Inget lösenord behövs.</p>
+      <h1 class="auth-title" id="authTitle">Logga in</h1>
+      <p class="auth-sub" id="authSub">Logga in med din e-post och ditt lösenord.</p>
       <form id="authForm" class="auth-form">
         <input id="authEmail" type="email" required placeholder="namn@exempel.se" autocomplete="email" />
-        <button class="btn btn-primary btn-block" type="submit" id="authSubmitBtn">Skicka inloggningslänk</button>
+        <input id="authPassword" type="password" required minlength="6" placeholder="Lösenord (minst 6 tecken)" autocomplete="current-password" />
+        <button class="btn btn-primary btn-block" type="submit" id="authSubmitBtn">Logga in</button>
       </form>
       <div id="authMessage" class="auth-message" hidden></div>
+      <div class="auth-toggle">
+        <span id="authToggleText">Inget konto än?</span>
+        <a href="#" id="authToggleLink">Skapa konto</a>
+      </div>
     </div>
   </div>
 

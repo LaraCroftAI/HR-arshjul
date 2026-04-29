@@ -974,8 +974,6 @@ async function initAuth() {
   }
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
-      flowType: 'implicit',
-      detectSessionInUrl: false, // we handle the magic-link hash ourselves
       persistSession: true,
       autoRefreshToken: true,
     },
@@ -988,9 +986,6 @@ async function initAuth() {
     else onSignedOut();
   });
 
-  // If the magic link returned us here with #access_token=..., consume it.
-  await consumeMagicLinkHashIfPresent();
-
   const { data } = await sb.auth.getSession();
   if (data.session && data.session.user) {
     await onSignedIn(data.session.user);
@@ -999,30 +994,38 @@ async function initAuth() {
   }
 }
 
-async function consumeMagicLinkHashIfPresent() {
-  const hash = window.location.hash || '';
-  if (!hash.includes('access_token=')) return;
-  try {
-    const params = new URLSearchParams(hash.startsWith('#') ? hash.substring(1) : hash);
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-    const errorDescription = params.get('error_description');
-    if (errorDescription) {
-      showAuthMessage('Inloggningslänken gick inte att använda: ' + errorDescription, true);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-      return;
-    }
-    if (!access_token || !refresh_token) return;
-    const { error } = await sb.auth.setSession({ access_token, refresh_token });
-    if (error) {
-      showAuthMessage('Kunde inte slutföra inloggningen: ' + error.message, true);
-      return;
-    }
-    // Clean the URL so refreshes don't keep the token visible
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-  } catch (err) {
-    console.error('Magic link hash handling failed:', err);
+// 'signin' or 'signup'
+let authMode = 'signin';
+
+function setAuthMode(mode) {
+  authMode = mode;
+  if (mode === 'signin') {
+    $('authTitle').textContent = 'Logga in';
+    $('authSub').textContent = 'Logga in med din e-post och ditt lösenord.';
+    $('authSubmitBtn').textContent = 'Logga in';
+    $('authPassword').setAttribute('autocomplete', 'current-password');
+    $('authToggleText').textContent = 'Inget konto än?';
+    $('authToggleLink').textContent = 'Skapa konto';
+  } else {
+    $('authTitle').textContent = 'Skapa konto';
+    $('authSub').textContent = 'Välj ett lösenord (minst 6 tecken). Du behåller samma e-post och lösenord för att logga in nästa gång.';
+    $('authSubmitBtn').textContent = 'Skapa konto';
+    $('authPassword').setAttribute('autocomplete', 'new-password');
+    $('authToggleText').textContent = 'Har du redan ett konto?';
+    $('authToggleLink').textContent = 'Logga in';
   }
+  showAuthMessage('', false);
+}
+
+function translateAuthError(message) {
+  const m = String(message || '').toLowerCase();
+  if (m.includes('invalid login') || m.includes('invalid credentials')) return 'Fel e-post eller lösenord.';
+  if (m.includes('email not confirmed')) return 'Du måste bekräfta din e-post först. Kolla inkorgen (och skräpposten).';
+  if (m.includes('user already registered') || m.includes('already exists')) return 'Det här kontot finns redan. Tryck på "Logga in" istället.';
+  if (m.includes('password should be at least')) return 'Lösenordet är för kort — minst 6 tecken.';
+  if (m.includes('rate limit')) return 'För många försök. Vänta en stund och försök igen.';
+  if (m.includes('weak password')) return 'Lösenordet är för svagt — välj ett längre eller mer komplext.';
+  return message || 'Något gick fel. Försök igen.';
 }
 
 function setupAuthHandlers() {
@@ -1030,24 +1033,41 @@ function setupAuthHandlers() {
     e.preventDefault();
     if (!sb) return;
     const email = $('authEmail').value.trim();
-    if (!email) return;
+    const password = $('authPassword').value;
+    if (!email || !password) return;
     const submitBtn = $('authSubmitBtn');
+    const originalLabel = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Skickar...';
+    submitBtn.textContent = authMode === 'signin' ? 'Loggar in...' : 'Skapar konto...';
     showAuthMessage('', false);
     try {
-      const { error } = await sb.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname },
-      });
-      if (error) throw error;
-      showAuthMessage(`Vi har skickat en länk till ${email}. Klicka på länken i mejlet (kolla även skräpposten).`, false);
+      if (authMode === 'signin') {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // Successful sign-in fires onAuthStateChange — UI swaps to app there.
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.session) {
+          // Account created and signed in immediately (email confirmation off)
+          // onAuthStateChange handles the rest.
+        } else {
+          // Account created but waiting for email confirmation
+          showAuthMessage(`Konto skapat. Vi har skickat ett bekräftelsemejl till ${email} — klicka på länken där och kom sedan tillbaka och logga in.`, false);
+          setAuthMode('signin');
+        }
+      }
     } catch (err) {
-      showAuthMessage('Kunde inte skicka länken: ' + (err.message || err), true);
+      showAuthMessage(translateAuthError(err.message || err), true);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Skicka inloggningslänk';
+      submitBtn.textContent = originalLabel;
     }
+  });
+
+  $('authToggleLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
   });
 
   $('logoutBtn').addEventListener('click', async () => {
