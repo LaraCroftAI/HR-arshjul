@@ -975,7 +975,7 @@ async function initAuth() {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       flowType: 'implicit',
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // we handle the magic-link hash ourselves
       persistSession: true,
       autoRefreshToken: true,
     },
@@ -988,11 +988,40 @@ async function initAuth() {
     else onSignedOut();
   });
 
+  // If the magic link returned us here with #access_token=..., consume it.
+  await consumeMagicLinkHashIfPresent();
+
   const { data } = await sb.auth.getSession();
   if (data.session && data.session.user) {
     await onSignedIn(data.session.user);
   } else {
     onSignedOut();
+  }
+}
+
+async function consumeMagicLinkHashIfPresent() {
+  const hash = window.location.hash || '';
+  if (!hash.includes('access_token=')) return;
+  try {
+    const params = new URLSearchParams(hash.startsWith('#') ? hash.substring(1) : hash);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const errorDescription = params.get('error_description');
+    if (errorDescription) {
+      showAuthMessage('Inloggningslänken gick inte att använda: ' + errorDescription, true);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      return;
+    }
+    if (!access_token || !refresh_token) return;
+    const { error } = await sb.auth.setSession({ access_token, refresh_token });
+    if (error) {
+      showAuthMessage('Kunde inte slutföra inloggningen: ' + error.message, true);
+      return;
+    }
+    // Clean the URL so refreshes don't keep the token visible
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  } catch (err) {
+    console.error('Magic link hash handling failed:', err);
   }
 }
 
