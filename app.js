@@ -1164,8 +1164,7 @@ async function runAdminDiagnostic() {
   const log = ['== HR Årshjul diagnostik ==', 'Tid: ' + new Date().toISOString(), ''];
   log.push('navigator.onLine: ' + navigator.onLine);
   log.push('SUPABASE_URL: ' + SUPABASE_URL);
-  log.push('window.location: ' + window.location.href);
-  log.push('script version: v=16');
+  log.push('User-Agent: ' + navigator.userAgent.slice(0, 100));
   log.push('');
 
   let token = null;
@@ -1176,36 +1175,52 @@ async function runAdminDiagnostic() {
     if (sess) {
       token = sess.access_token;
       log.push('  user.email: ' + (sess.user && sess.user.email));
-      log.push('  user.id: ' + (sess.user && sess.user.id));
-      log.push('  expires_at: ' + new Date(sess.expires_at * 1000).toISOString());
-      log.push('  token (första 30): ' + (sess.access_token || '').slice(0, 30) + '...');
     }
   } catch (err) {
     log.push('Session error: ' + (err.message || err));
   }
-
   log.push('');
 
-  if (token) {
+  if (!token) {
+    alert(log.join('\n') + '\n\nIngen session — logga ut och in.');
+    return;
+  }
+
+  // Test flera endpoints, var och en med 5 sek timeout
+  async function test(label, opts) {
+    const t0 = Date.now();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
     try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/whoami', {
-        method: 'POST',
+      const res = await fetch(opts.url, {
+        method: opts.method,
         headers: {
           'Content-Type': 'application/json',
           apikey: SUPABASE_KEY,
           Authorization: 'Bearer ' + token,
         },
-        body: '{}',
+        body: opts.body,
+        signal: ctrl.signal,
       });
-      log.push('whoami fetch status: ' + res.status);
-      const text = await res.text();
-      log.push('whoami body: ' + text);
+      clearTimeout(timer);
+      const ms = Date.now() - t0;
+      const text = (await res.text()).slice(0, 120);
+      log.push(`[${label}] ${res.status} på ${ms}ms - ${text}`);
     } catch (err) {
-      log.push('whoami fetch error: ' + (err.name || '') + ' - ' + (err.message || err));
+      clearTimeout(timer);
+      const ms = Date.now() - t0;
+      log.push(`[${label}] FEL på ${ms}ms - ${err.name}: ${err.message}`);
     }
-  } else {
-    log.push('Skippar fetch — ingen token.');
   }
+
+  log.push('Testar olika endpoints (5 sek max per anrop):');
+  log.push('');
+  await test('GET wheels', { method: 'GET', url: SUPABASE_URL + '/rest/v1/wheels?select=user_id&limit=1' });
+  await test('GET admins', { method: 'GET', url: SUPABASE_URL + '/rest/v1/admins?select=user_id&limit=1' });
+  await test('GET allowed_emails', { method: 'GET', url: SUPABASE_URL + '/rest/v1/allowed_emails?select=email&limit=1' });
+  await test('POST rpc/whoami', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/whoami', body: '{}' });
+  await test('POST rpc/is_admin', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/is_admin', body: '{}' });
+  await test('POST rpc/admin_list_emails', { method: 'POST', url: SUPABASE_URL + '/rest/v1/rpc/admin_list_emails', body: '{}' });
 
   alert(log.join('\n'));
 }
