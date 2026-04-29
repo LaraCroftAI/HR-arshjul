@@ -1156,6 +1156,58 @@ function setupAuthHandlers() {
     if (e.target === $('adminModal')) closeAdminModal();
   });
   $('adminAddForm').addEventListener('submit', handleAdminAdd);
+  const diagBtn = $('adminDiagBtn');
+  if (diagBtn) diagBtn.addEventListener('click', runAdminDiagnostic);
+}
+
+async function runAdminDiagnostic() {
+  const log = ['== HR Årshjul diagnostik ==', 'Tid: ' + new Date().toISOString(), ''];
+  log.push('navigator.onLine: ' + navigator.onLine);
+  log.push('SUPABASE_URL: ' + SUPABASE_URL);
+  log.push('window.location: ' + window.location.href);
+  log.push('script version: v=16');
+  log.push('');
+
+  let token = null;
+  try {
+    const sessRes = await sb.auth.getSession();
+    const sess = sessRes && sessRes.data && sessRes.data.session;
+    log.push('Session: ' + (sess ? 'finns' : 'SAKNAS'));
+    if (sess) {
+      token = sess.access_token;
+      log.push('  user.email: ' + (sess.user && sess.user.email));
+      log.push('  user.id: ' + (sess.user && sess.user.id));
+      log.push('  expires_at: ' + new Date(sess.expires_at * 1000).toISOString());
+      log.push('  token (första 30): ' + (sess.access_token || '').slice(0, 30) + '...');
+    }
+  } catch (err) {
+    log.push('Session error: ' + (err.message || err));
+  }
+
+  log.push('');
+
+  if (token) {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/whoami', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + token,
+        },
+        body: '{}',
+      });
+      log.push('whoami fetch status: ' + res.status);
+      const text = await res.text();
+      log.push('whoami body: ' + text);
+    } catch (err) {
+      log.push('whoami fetch error: ' + (err.name || '') + ' - ' + (err.message || err));
+    }
+  } else {
+    log.push('Skippar fetch — ingen token.');
+  }
+
+  alert(log.join('\n'));
 }
 
 // ---------- Admin (allowlist) UI ----------
