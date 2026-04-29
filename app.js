@@ -1019,12 +1019,19 @@ function setAuthMode(mode) {
 
 function translateAuthError(message) {
   const m = String(message || '').toLowerCase();
+  if (m.includes('inte inbjuden') || m.includes('inbjudna')) {
+    return 'Den här e-postadressen har inte tillgång till verktyget. Be administratören att lägga till dig.';
+  }
   if (m.includes('invalid login') || m.includes('invalid credentials')) return 'Fel e-post eller lösenord.';
   if (m.includes('email not confirmed')) return 'Du måste bekräfta din e-post först. Kolla inkorgen (och skräpposten).';
   if (m.includes('user already registered') || m.includes('already exists')) return 'Det här kontot finns redan. Tryck på "Logga in" istället.';
   if (m.includes('password should be at least')) return 'Lösenordet är för kort — minst 6 tecken.';
   if (m.includes('rate limit')) return 'För många försök. Vänta en stund och försök igen.';
   if (m.includes('weak password')) return 'Lösenordet är för svagt — välj ett längre eller mer komplext.';
+  if (m.includes('database error') && m.includes('saving')) {
+    // The signup trigger raises an exception that surfaces as a generic db error
+    return 'Den här e-postadressen har inte tillgång till verktyget. Be administratören att lägga till dig.';
+  }
   return message || 'Något gick fel. Försök igen.';
 }
 
@@ -1087,12 +1094,122 @@ function setupAuthHandlers() {
     if (!sb) return;
     await sb.auth.signOut();
   });
+
+  // Admin modal wiring
+  $('adminBtn').addEventListener('click', openAdminModal);
+  $('adminCloseBtn').addEventListener('click', closeAdminModal);
+  $('adminModal').addEventListener('click', (e) => {
+    if (e.target === $('adminModal')) closeAdminModal();
+  });
+  $('adminAddForm').addEventListener('submit', handleAdminAdd);
+}
+
+// ---------- Admin (allowlist) UI ----------
+async function openAdminModal() {
+  $('adminModal').hidden = false;
+  $('adminMessage').hidden = true;
+  await renderAdminEmailList();
+}
+function closeAdminModal() {
+  $('adminModal').hidden = true;
+  $('adminAddEmail').value = '';
+  $('adminAddNotes').value = '';
+}
+
+function showAdminMessage(text, isError) {
+  const el = $('adminMessage');
+  if (!text) { el.hidden = true; el.classList.remove('is-error'); return; }
+  el.textContent = text;
+  el.hidden = false;
+  el.classList.toggle('is-error', !!isError);
+}
+
+async function renderAdminEmailList() {
+  const list = $('adminEmailList');
+  list.innerHTML = '';
+  try {
+    const { data, error } = await sb
+      .from('allowed_emails')
+      .select('email, invited_at, notes')
+      .order('invited_at', { ascending: false });
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      list.innerHTML = '<li class="admin-email-empty">Listan är tom — lägg till en mejladress för att börja bjuda in.</li>';
+      return;
+    }
+    const myEmail = (currentUser && currentUser.email || '').toLowerCase();
+    data.forEach(row => {
+      const isSelf = row.email.toLowerCase() === myEmail;
+      const li = document.createElement('li');
+      li.className = 'admin-email-row' + (isSelf ? ' is-self' : '');
+      li.innerHTML = `
+        <span class="admin-email">${escapeHtml(row.email)}${isSelf ? ' (du)' : ''}</span>
+        <span class="admin-notes">${escapeHtml(row.notes || '')}</span>
+        <button class="btn-icon" type="button" data-email="${escapeHtml(row.email)}" ${isSelf ? 'disabled title="Du kan inte ta bort dig själv"' : 'title="Ta bort"'}>✕</button>
+      `;
+      list.appendChild(li);
+    });
+    list.querySelectorAll('button[data-email]').forEach(btn => {
+      btn.addEventListener('click', () => handleAdminRemove(btn.dataset.email));
+    });
+  } catch (err) {
+    console.error(err);
+    showAdminMessage('Kunde inte hämta listan: ' + (err.message || err), true);
+  }
+}
+
+async function handleAdminAdd(e) {
+  e.preventDefault();
+  const emailRaw = $('adminAddEmail').value.trim().toLowerCase();
+  const notes = $('adminAddNotes').value.trim();
+  if (!emailRaw) return;
+  showAdminMessage('', false);
+  try {
+    const { error } = await sb.from('allowed_emails').insert({
+      email: emailRaw,
+      invited_by: currentUser ? currentUser.id : null,
+      notes: notes || null,
+    });
+    if (error) throw error;
+    $('adminAddEmail').value = '';
+    $('adminAddNotes').value = '';
+    showAdminMessage(`${emailRaw} har lagts till. Säg till personen att de kan gå till sidan och skapa konto.`, false);
+    await renderAdminEmailList();
+  } catch (err) {
+    let msg = err.message || String(err);
+    if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists')) {
+      msg = 'Den här mejladressen finns redan på listan.';
+    }
+    showAdminMessage(msg, true);
+  }
+}
+
+async function handleAdminRemove(email) {
+  if (!confirm(`Ta bort ${email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.`)) return;
+  showAdminMessage('', false);
+  try {
+    const { error } = await sb.from('allowed_emails').delete().eq('email', email.toLowerCase());
+    if (error) throw error;
+    await renderAdminEmailList();
+  } catch (err) {
+    showAdminMessage('Kunde inte ta bort: ' + (err.message || err), true);
+  }
 }
 
 async function onSignedIn(user) {
   currentUser = user;
   showAppScreen(user);
   await loadUserWheel(user.id);
+  await refreshAdminStatus();
+}
+
+let isAdmin = false;
+async function refreshAdminStatus() {
+  try {
+    const { data, error } = await sb.from('admins').select('user_id').limit(1);
+    isAdmin = !error && Array.isArray(data) && data.length > 0;
+  } catch { isAdmin = false; }
+  $('adminBtn').hidden = !isAdmin;
 }
 
 function onSignedOut() {

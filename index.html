@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -66,6 +66,7 @@
           </div>
         </div>
         <div class="user-block">
+          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden>Hantera användare</button>
           <span id="userEmail" class="user-email"></span>
           <button id="logoutBtn" class="btn btn-ghost btn-small" type="button">Logga ut</button>
         </div>
@@ -109,8 +110,28 @@
 
   </div><!-- /#appScreen -->
 
+  <!-- Admin modal: manage allowed emails -->
+  <div id="adminModal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-labelledby="adminModalTitle">
+      <div class="modal-head">
+        <h2 id="adminModalTitle">Hantera användare</h2>
+        <button id="adminCloseBtn" class="btn-icon" type="button" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-sub">Bara mejladresser i den här listan kan skapa konto. Lägg till en ny adress, säg till personen själv, så kan de gå till sidan och välja sitt eget lösenord.</p>
+
+      <form id="adminAddForm" class="admin-add-form" autocomplete="off">
+        <input id="adminAddEmail" type="email" required placeholder="namn@exempel.se" />
+        <input id="adminAddNotes" type="text" placeholder="Anteckning (valfritt)" />
+        <button class="btn btn-primary" type="submit">Lägg till</button>
+      </form>
+      <div id="adminMessage" class="auth-message" hidden></div>
+
+      <ul id="adminEmailList" class="admin-email-list"></ul>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=6" defer></script>
+  <script src="app.js?v=7" defer></script>
 </body>
 </html>
