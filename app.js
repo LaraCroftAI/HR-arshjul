@@ -1295,9 +1295,9 @@ function showAdminMessage(text, isError) {
   el.classList.toggle('is-error', !!isError);
 }
 
-// Native fetch wrapper for our admin RPCs — bypasses supabase-js client entirely
-// so we have full visibility into what's happening with the network call.
-async function callRpc(name, body) {
+// Anropa vår egen Vercel serverless-funktion som vidarebefordrar till Supabase.
+// Bypass:ar vad som än blockerar direkta supabase.co-anrop i Lara's miljö.
+async function callAdminApi(action, extra) {
   const sessRes = await sb.auth.getSession();
   const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
   if (!token) throw new Error('Ingen aktiv session — logga ut och in igen.');
@@ -1307,14 +1307,13 @@ async function callRpc(name, body) {
 
   let res;
   try {
-    res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+    res = await fetch('/api/admin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: SUPABASE_KEY,
         Authorization: 'Bearer ' + token,
       },
-      body: JSON.stringify(body || {}),
+      body: JSON.stringify(Object.assign({ action }, extra || {})),
       signal: ctrl.signal,
     });
   } catch (err) {
@@ -1328,7 +1327,7 @@ async function callRpc(name, body) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch {}
   if (!res.ok) {
-    const msg = (data && (data.message || data.hint)) || ('HTTP ' + res.status);
+    const msg = (data && (data.error || data.message || data.hint)) || ('HTTP ' + res.status);
     const err = new Error(msg);
     err.status = res.status;
     throw err;
@@ -1340,7 +1339,7 @@ async function renderAdminEmailList() {
   const list = $('adminEmailList');
   list.innerHTML = '<li class="admin-email-empty">Hämtar listan…</li>';
   try {
-    const data = await callRpc('admin_list_emails');
+    const data = await callAdminApi('list');
     list.innerHTML = '';
     if (!data || data.length === 0) {
       list.innerHTML = '<li class="admin-email-empty">Listan är tom — lägg till en mejladress för att börja bjuda in.</li>';
@@ -1378,7 +1377,7 @@ async function handleAdminAdd(e) {
   const originalText = submitBtn ? submitBtn.textContent : '';
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Lägger till…'; }
   try {
-    await callRpc('admin_add_email', { p_email: emailRaw, p_notes: notes || null });
+    await callAdminApi('add', { email: emailRaw, notes: notes || null });
     $('adminAddEmail').value = '';
     $('adminAddNotes').value = '';
     showAdminMessage(`${emailRaw} har lagts till. Säg till personen att de kan gå till sidan och skapa konto.`, false);
@@ -1399,7 +1398,7 @@ async function handleAdminRemove(email) {
   if (!confirm(`Ta bort ${email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.`)) return;
   showAdminMessage('', false);
   try {
-    await callRpc('admin_remove_email', { p_email: email });
+    await callAdminApi('remove', { email: email });
     await renderAdminEmailList();
   } catch (err) {
     console.error('admin_remove_email error:', err);
