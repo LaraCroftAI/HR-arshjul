@@ -967,6 +967,16 @@ function hexToRgb(hex) {
 // Authentication — magic link via Supabase, one wheel per user
 // ====================================================================
 async function initAuth() {
+  // Fallback: if neither screen is visible after 1.5s, force the login screen.
+  // (Catches any edge case where init silently throws somewhere.)
+  setTimeout(() => {
+    const a = $('authScreen'), b = $('appScreen');
+    if (a && b && a.hidden && b.hidden) {
+      console.warn('Both screens hidden — forcing login screen visible');
+      a.hidden = false;
+    }
+  }, 1500);
+
   if (typeof supabase === 'undefined') {
     showAuthMessage('Inloggningstjänsten kunde inte laddas. Kontrollera nätet och ladda om sidan.', true);
     showLoginScreen();
