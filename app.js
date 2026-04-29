@@ -356,11 +356,54 @@ function renderWheel() {
     }, MONTHS_SV[m]);
   }
 
-  // Center circle
+  // Center circle + client name (no year)
   appendSvg('circle', { cx: 0, cy: 0, r: innerR - 4, fill: '#fff', stroke: '#E5E0D7', 'stroke-width': 1 });
-  const title = state.client || 'Årshjul';
-  appendSvg('text', { x: 0, y: -10, 'text-anchor': 'middle', class: 'wheel-center-label', 'font-size': title.length > 14 ? 13 : 16 }, title);
-  appendSvg('text', { x: 0, y: 12, 'text-anchor': 'middle', class: 'wheel-center-label', 'font-size': 22, 'font-weight': 600 }, String(state.year));
+  const title = (state.client || 'Årshjul').trim();
+  const lines = splitTitleOnWords(title, 12);
+  const fontSize = lines.length === 1 ? 18 : 15;
+
+  if (lines.length === 1) {
+    appendSvg('text', {
+      x: 0, y: 0,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      class: 'wheel-center-label',
+      'font-size': fontSize,
+    }, lines[0]);
+  } else {
+    // Center two lines vertically around y=0
+    appendSvg('text', {
+      x: 0, y: -fontSize * 0.6,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      class: 'wheel-center-label',
+      'font-size': fontSize,
+    }, lines[0]);
+    appendSvg('text', {
+      x: 0, y: fontSize * 0.6,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      class: 'wheel-center-label',
+      'font-size': fontSize,
+    }, lines[1]);
+  }
+}
+
+function splitTitleOnWords(title, maxCharsPerLine) {
+  if (!title) return [''];
+  if (title.length <= maxCharsPerLine) return [title];
+  const words = title.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return [title]; // single long word — can't break
+  let line1 = '';
+  let i = 0;
+  while (i < words.length) {
+    const candidate = line1 ? line1 + ' ' + words[i] : words[i];
+    if (candidate.length > maxCharsPerLine && line1) break;
+    line1 = candidate;
+    i++;
+  }
+  const line2 = words.slice(i).join(' ');
+  return line2 ? [line1, line2] : [line1];
 }
 
 function appendSvg(tag, attrs, text) {
