@@ -1178,13 +1178,52 @@ function showAdminMessage(text, isError) {
   el.classList.toggle('is-error', !!isError);
 }
 
+// Native fetch wrapper for our admin RPCs — bypasses supabase-js client entirely
+// so we have full visibility into what's happening with the network call.
+async function callRpc(name, body) {
+  const sessRes = await sb.auth.getSession();
+  const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+  if (!token) throw new Error('Ingen aktiv session — logga ut och in igen.');
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+
+  let res;
+  try {
+    res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + token,
+      },
+      body: JSON.stringify(body || {}),
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('Begäran tog för lång tid (10 sek).');
+    throw err;
+  }
+  clearTimeout(timer);
+
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!res.ok) {
+    const msg = (data && (data.message || data.hint)) || ('HTTP ' + res.status);
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
 async function renderAdminEmailList() {
   const list = $('adminEmailList');
   list.innerHTML = '<li class="admin-email-empty">Hämtar listan…</li>';
   try {
-    // Use SECURITY DEFINER RPC — bypasses RLS, returns the list directly.
-    const { data, error } = await sb.rpc('admin_list_emails');
-    if (error) throw error;
+    const data = await callRpc('admin_list_emails');
     list.innerHTML = '';
     if (!data || data.length === 0) {
       list.innerHTML = '<li class="admin-email-empty">Listan är tom — lägg till en mejladress för att börja bjuda in.</li>';
@@ -1218,23 +1257,24 @@ async function handleAdminAdd(e) {
   const notes = $('adminAddNotes').value.trim();
   if (!emailRaw) return;
   showAdminMessage('', false);
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.textContent : '';
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Lägger till…'; }
   try {
-    const { error } = await sb.rpc('admin_add_email', {
-      p_email: emailRaw,
-      p_notes: notes || null,
-    });
-    if (error) throw error;
+    await callRpc('admin_add_email', { p_email: emailRaw, p_notes: notes || null });
     $('adminAddEmail').value = '';
     $('adminAddNotes').value = '';
     showAdminMessage(`${emailRaw} har lagts till. Säg till personen att de kan gå till sidan och skapa konto.`, false);
     await renderAdminEmailList();
   } catch (err) {
     let msg = err.message || String(err);
-    if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists')) {
+    if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('unique')) {
       msg = 'Den här mejladressen finns redan på listan.';
     }
     console.error('admin_add_email error:', err);
     showAdminMessage(msg, true);
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText || 'Lägg till'; }
   }
 }
 
@@ -1242,8 +1282,7 @@ async function handleAdminRemove(email) {
   if (!confirm(`Ta bort ${email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.`)) return;
   showAdminMessage('', false);
   try {
-    const { error } = await sb.rpc('admin_remove_email', { p_email: email });
-    if (error) throw error;
+    await callRpc('admin_remove_email', { p_email: email });
     await renderAdminEmailList();
   } catch (err) {
     console.error('admin_remove_email error:', err);
