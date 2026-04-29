@@ -1041,22 +1041,34 @@ function setupAuthHandlers() {
     submitBtn.textContent = authMode === 'signin' ? 'Loggar in...' : 'Skapar konto...';
     showAuthMessage('', false);
     try {
-      if (authMode === 'signin') {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        // Belt-and-suspenders: swap UI directly in case the auth-state event races.
-        if (data && data.user) await onSignedIn(data.user);
+      const fn = authMode === 'signin' ? sb.auth.signInWithPassword : sb.auth.signUp;
+      const { data, error } = await fn.call(sb.auth, { email, password });
+      if (error) throw error;
+
+      // Try to get a user from any of the places it might appear.
+      let user = (data && data.user) || null;
+      if (!user) {
+        const sessRes = await sb.auth.getSession();
+        user = (sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.user) || null;
+      }
+
+      if (authMode === 'signup' && !user && !(data && data.session)) {
+        // Email confirmation required and account just created
+        showAuthMessage(`Konto skapat. Vi har skickat ett bekräftelsemejl till ${email} — klicka på länken där och kom sedan tillbaka och logga in.`, false);
+        setAuthMode('signin');
+      } else if (user) {
+        // Force the screen swap synchronously, BEFORE awaiting any wheel data.
+        $('authScreen').hidden = true;
+        $('appScreen').hidden = false;
+        $('userEmail').textContent = user.email || '';
+        currentUser = user;
+        // Load wheel in background; don't block UI swap on it
+        loadUserWheel(user.id).catch(err => {
+          console.error('loadUserWheel failed:', err);
+          toast('Hjulet kunde inte laddas — försök ladda om sidan');
+        });
       } else {
-        const { data, error } = await sb.auth.signUp({ email, password });
-        if (error) throw error;
-        if (data.session && data.user) {
-          // Account created and signed in immediately (email confirmation off)
-          await onSignedIn(data.user);
-        } else {
-          // Account created but waiting for email confirmation
-          showAuthMessage(`Konto skapat. Vi har skickat ett bekräftelsemejl till ${email} — klicka på länken där och kom sedan tillbaka och logga in.`, false);
-          setAuthMode('signin');
-        }
+        showAuthMessage('Inloggning gick igenom men sessionen kunde inte startas. Ladda om sidan och försök igen.', true);
       }
     } catch (err) {
       showAuthMessage(translateAuthError(err.message || err), true);
