@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>HR Årshjul — Hantera användare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #FAF8F4;
+      color: #1A2332;
+      padding: 32px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 26px; margin: 0 0 4px; }
+    .sub { color: #5C6577; margin: 0 0 24px; font-size: 14px; }
+    .card { background: #fff; border: 1px solid #E5E0D7; border-radius: 10px; padding: 22px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(20,26,40,.04); }
+    label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #8C95A6; font-weight: 600; margin-bottom: 4px; margin-top: 12px; }
+    input, button { font: inherit; }
+    input { padding: 10px 12px; border: 1px solid #E5E0D7; border-radius: 6px; width: 100%; }
+    input:focus { outline: 2px solid #B68B47; outline-offset: 1px; }
+    button { padding: 10px 18px; border-radius: 6px; cursor: pointer; border: 1px solid #E5E0D7; background: #fff; font-weight: 500; }
+    button.primary { background: #1A2332; color: #fff; border-color: #1A2332; }
+    button.primary:hover { background: #2A3445; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 200px; }
+    .msg { margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 13px; }
+    .msg.ok { background: #EDF5ED; border: 1px solid #C5DCC0; color: #2A5C2A; }
+    .msg.err { background: #FBEDE9; border: 1px solid #E8C4BC; color: #7A2418; }
+    ul { list-style: none; padding: 0; margin: 14px 0 0; }
+    li { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; background: #F4F1EB; border: 1px solid #E5E0D7; border-radius: 6px; margin-bottom: 6px; font-size: 14px; }
+    li.self { background: #EEF0F4; }
+    li button { padding: 4px 10px; font-size: 13px; color: #B0463A; border: 1px solid transparent; }
+    li button:hover { border-color: #E8C4BC; background: #FBEDE9; }
+    li small { color: #8C95A6; display: block; font-size: 11px; margin-top: 2px; }
+    .nav { margin-bottom: 24px; }
+    .nav a { color: #6E5429; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="nav"><a href="/">← Tillbaka till HR Årshjul</a></div>
+  <h1>Hantera användare</h1>
+  <p class="sub">Här bjuder du in personer som ska få tillgång till verktyget. Bara mejl i listan kan skapa konto.</p>
+
+  <div class="card" id="loginCard">
+    <h2 style="margin:0 0 8px; font-family:'Fraunces',serif; font-weight:500;">Logga in</h2>
+    <label>E-post</label>
+    <input id="email" type="email" placeholder="namn@exempel.se" autocomplete="email" />
+    <label>Lösenord</label>
+    <input id="password" type="password" autocomplete="current-password" />
+    <div style="margin-top:14px"><button class="primary" id="loginBtn">Logga in</button></div>
+    <div id="loginMsg" class="msg" style="display:none"></div>
+  </div>
+
+  <div class="card" id="adminCard" style="display:none">
+    <h2 style="margin:0 0 8px; font-family:'Fraunces',serif; font-weight:500;">Bjud in ny</h2>
+    <p class="sub" style="margin:0 0 12px;">Säg till personen själv att de kan gå till sajten och skapa konto med valfritt lösenord.</p>
+    <div class="row">
+      <div>
+        <label>E-post</label>
+        <input id="addEmail" type="email" placeholder="namn@exempel.se" />
+      </div>
+      <div>
+        <label>Anteckning (valfritt)</label>
+        <input id="addNotes" type="text" placeholder="t.ex. Anna från Acme HR" />
+      </div>
+      <button class="primary" id="addBtn">Lägg till</button>
+    </div>
+    <div id="addMsg" class="msg" style="display:none"></div>
+
+    <h2 style="margin:24px 0 8px; font-family:'Fraunces',serif; font-weight:500;">Tillåtna mejl</h2>
+    <ul id="list"></ul>
+  </div>
+
+  <script>
+  const SUPABASE_URL = 'https://afcagjgztvmdpeljrjru.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable__QjXJj6z2J2FaCyWvRVSWg_pbiIbHiI';
+  let token = null;
+  let myEmail = null;
+
+  const $ = (id) => document.getElementById(id);
+  function msg(el, text, ok) {
+    el.style.display = text ? 'block' : 'none';
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.textContent = text;
+  }
+
+  $('loginBtn').addEventListener('click', login);
+  $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+  $('addBtn').addEventListener('click', addEmail);
+
+  async function login() {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    if (!email || !password) { msg($('loginMsg'), 'Fyll i e-post och lösenord.'); return; }
+    $('loginBtn').disabled = true;
+    msg($('loginMsg'), '');
+    try {
+      const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.access_token) {
+        msg($('loginMsg'), 'Inloggning misslyckades: ' + (data.error_description || data.msg || res.status));
+        return;
+      }
+      token = data.access_token;
+      myEmail = (data.user && data.user.email || '').toLowerCase();
+      $('loginCard').style.display = 'none';
+      $('adminCard').style.display = 'block';
+      await loadList();
+    } catch (err) {
+      msg($('loginMsg'), 'Anslutningsfel: ' + err.message);
+    } finally {
+      $('loginBtn').disabled = false;
+    }
+  }
+
+  async function callApi(action, extra) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(Object.assign({ action }, extra || {})),
+    });
+    const text = await res.text();
+    let data; try { data = text ? JSON.parse(text) : null; } catch {}
+    if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
+    return data;
+  }
+
+  async function loadList() {
+    const list = $('list');
+    list.innerHTML = '<li>Hämtar…</li>';
+    try {
+      const data = await callApi('list');
+      list.innerHTML = '';
+      if (!data || data.length === 0) {
+        list.innerHTML = '<li>Listan är tom — lägg till en mejl ovan.</li>';
+        return;
+      }
+      data.forEach(row => {
+        const isSelf = row.email.toLowerCase() === myEmail;
+        const li = document.createElement('li');
+        if (isSelf) li.className = 'self';
+        const date = (row.invited_at || '').slice(0, 10);
+        li.innerHTML = '<div><div>' + escapeHtml(row.email) + (isSelf ? ' (du)' : '') + '</div>' +
+                       (row.notes ? '<small>' + escapeHtml(row.notes) + '</small>' : '') +
+                       '<small>Inbjuden ' + date + '</small></div>' +
+                       (isSelf ? '<span style="color:#8C95A6;font-size:12px">admin</span>'
+                               : '<button data-email="' + escapeHtml(row.email) + '">✕ ta bort</button>');
+        list.appendChild(li);
+      });
+      list.querySelectorAll('button[data-email]').forEach(b => {
+        b.addEventListener('click', () => removeEmail(b.dataset.email));
+      });
+    } catch (err) {
+      list.innerHTML = '<li style="color:#7A2418">Kunde inte hämta: ' + err.message + '</li>';
+    }
+  }
+
+  async function addEmail() {
+    const email = $('addEmail').value.trim().toLowerCase();
+    const notes = $('addNotes').value.trim();
+    if (!email) { msg($('addMsg'), 'Skriv en mejl.'); return; }
+    $('addBtn').disabled = true;
+    msg($('addMsg'), '');
+    try {
+      await callApi('add', { email, notes: notes || null });
+      $('addEmail').value = '';
+      $('addNotes').value = '';
+      msg($('addMsg'), email + ' har lagts till. Säg till personen att de kan skapa konto på sajten.', true);
+      await loadList();
+    } catch (err) {
+      let m = err.message;
+      if (/duplicate|already|unique/i.test(m)) m = 'Den här mejlen finns redan på listan.';
+      msg($('addMsg'), m);
+    } finally {
+      $('addBtn').disabled = false;
+    }
+  }
+
+  async function removeEmail(email) {
+    if (!confirm('Ta bort ' + email + ' från listan? Befintliga konton påverkas inte.')) return;
+    try {
+      await callApi('remove', { email });
+      await loadList();
+    } catch (err) {
+      msg($('addMsg'), 'Kunde inte ta bort: ' + err.message);
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  </script>
+</body>
+</html>

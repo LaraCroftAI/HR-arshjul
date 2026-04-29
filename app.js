@@ -1457,6 +1457,8 @@ async function refreshAdminStatus() {
   if (KNOWN_ADMIN_EMAILS.has(email)) {
     isAdmin = true;
     $('adminBtn').hidden = false;
+    const link = $('adminLink');
+    if (link) link.hidden = false;
   }
 
   // Bekräfta också via RPC (bästa möjliga; om den returnerar true håll knappen)
@@ -1465,6 +1467,8 @@ async function refreshAdminStatus() {
     if (data === true) {
       isAdmin = true;
       $('adminBtn').hidden = false;
+      const link = $('adminLink');
+      if (link) link.hidden = false;
     }
   } catch (err) {
     console.warn('refreshAdminStatus rpc exception:', err);

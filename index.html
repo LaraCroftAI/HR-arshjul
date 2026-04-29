@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=24" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -69,7 +69,8 @@
           </div>
         </div>
         <div class="user-block">
-          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden>Hantera användare</button>
+          <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none">Hantera användare</a>
+          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none">Hantera användare</button>
           <span id="userEmail" class="user-email"></span>
           <button id="logoutBtn" class="btn btn-ghost btn-small" type="button">Logga ut</button>
         </div>
@@ -136,6 +137,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=23" defer></script>
+  <script src="app.js?v=24" defer></script>
 </body>
 </html>
