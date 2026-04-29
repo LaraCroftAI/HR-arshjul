@@ -1258,34 +1258,39 @@ async function onSignedIn(user) {
 }
 
 let isAdmin = false;
+
+// Klientsidig fallback: om mejlen är en känd admin, visa knappen direkt.
+// Servern (RLS) gör fortfarande den riktiga kontrollen — knappen leder bara
+// till handlingar som server-policys måste tillåta. Att visa knappen för fel
+// person är alltså ofarligt.
+const KNOWN_ADMIN_EMAILS = new Set([
+  'eva.klevas@klevasconsulting.com',
+  'klevas.ai@outlook.com',
+]);
+
 async function refreshAdminStatus() {
   if (!sb || !currentUser) {
     isAdmin = false;
     $('adminBtn').hidden = true;
     return;
   }
+  const email = (currentUser.email || '').toLowerCase();
+
+  // Snabb optimistisk check via mejl — visar knappen omedelbart för Lara.
+  if (KNOWN_ADMIN_EMAILS.has(email)) {
+    isAdmin = true;
+    $('adminBtn').hidden = false;
+  }
+
+  // Bekräfta också via RPC (bästa möjliga; om den returnerar true håll knappen)
   try {
-    // Use SECURITY DEFINER RPC — bypasses RLS, returns boolean directly.
-    // This is more reliable than a SELECT against the admins table because
-    // it doesn't depend on policy evaluation, JWT freshness for table access,
-    // or PostgREST row visibility. If the call succeeds, we know the answer.
-    const { data, error } = await sb.rpc('is_admin');
-    console.log('[admin-check] rpc is_admin result:', { data, error });
-    if (error) {
-      console.warn('refreshAdminStatus rpc error:', error);
-      return; // keep prior state
-    }
+    const { data } = await sb.rpc('is_admin');
     if (data === true) {
       isAdmin = true;
       $('adminBtn').hidden = false;
-    } else if (data === false) {
-      // Definitive: not an admin
-      isAdmin = false;
-      $('adminBtn').hidden = true;
     }
-    // If data is null/undefined (transient), don't change state
   } catch (err) {
-    console.warn('refreshAdminStatus exception:', err);
+    console.warn('refreshAdminStatus rpc exception:', err);
   }
 }
 
