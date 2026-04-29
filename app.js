@@ -1180,13 +1180,12 @@ function showAdminMessage(text, isError) {
 
 async function renderAdminEmailList() {
   const list = $('adminEmailList');
-  list.innerHTML = '';
+  list.innerHTML = '<li class="admin-email-empty">Hämtar listan…</li>';
   try {
-    const { data, error } = await sb
-      .from('allowed_emails')
-      .select('email, invited_at, notes')
-      .order('invited_at', { ascending: false });
+    // Use SECURITY DEFINER RPC — bypasses RLS, returns the list directly.
+    const { data, error } = await sb.rpc('admin_list_emails');
     if (error) throw error;
+    list.innerHTML = '';
     if (!data || data.length === 0) {
       list.innerHTML = '<li class="admin-email-empty">Listan är tom — lägg till en mejladress för att börja bjuda in.</li>';
       return;
@@ -1207,7 +1206,8 @@ async function renderAdminEmailList() {
       btn.addEventListener('click', () => handleAdminRemove(btn.dataset.email));
     });
   } catch (err) {
-    console.error(err);
+    console.error('admin_list_emails error:', err);
+    list.innerHTML = '';
     showAdminMessage('Kunde inte hämta listan: ' + (err.message || err), true);
   }
 }
@@ -1219,10 +1219,9 @@ async function handleAdminAdd(e) {
   if (!emailRaw) return;
   showAdminMessage('', false);
   try {
-    const { error } = await sb.from('allowed_emails').insert({
-      email: emailRaw,
-      invited_by: currentUser ? currentUser.id : null,
-      notes: notes || null,
+    const { error } = await sb.rpc('admin_add_email', {
+      p_email: emailRaw,
+      p_notes: notes || null,
     });
     if (error) throw error;
     $('adminAddEmail').value = '';
@@ -1234,6 +1233,7 @@ async function handleAdminAdd(e) {
     if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists')) {
       msg = 'Den här mejladressen finns redan på listan.';
     }
+    console.error('admin_add_email error:', err);
     showAdminMessage(msg, true);
   }
 }
@@ -1242,10 +1242,11 @@ async function handleAdminRemove(email) {
   if (!confirm(`Ta bort ${email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.`)) return;
   showAdminMessage('', false);
   try {
-    const { error } = await sb.from('allowed_emails').delete().eq('email', email.toLowerCase());
+    const { error } = await sb.rpc('admin_remove_email', { p_email: email });
     if (error) throw error;
     await renderAdminEmailList();
   } catch (err) {
+    console.error('admin_remove_email error:', err);
     showAdminMessage('Kunde inte ta bort: ' + (err.message || err), true);
   }
 }
