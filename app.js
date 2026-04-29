@@ -82,6 +82,7 @@ clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.
 
 $('addRingBtn').addEventListener('click', addRing);
 $('addActivityBtn').addEventListener('click', addActivity);
+setupRingDragAndDrop();
 $('newBtn').addEventListener('click', () => {
   if (!confirm('Börja om med ett tomt årshjul? Nuvarande hjul försvinner.')) return;
   state = defaultState();
@@ -114,7 +115,10 @@ function renderRings() {
   state.rings.forEach((ring, i) => {
     const li = document.createElement('li');
     li.className = 'ring-item';
+    li.draggable = true;
+    li.dataset.ringId = ring.id;
     li.innerHTML = `
+      <span class="ring-handle" title="Dra för att ändra ordning" aria-label="Dra för att ändra ordning">⋮⋮</span>
       <span class="ring-color" style="background:${ring.color}">
         <input type="color" value="${ring.color}" data-id="${ring.id}" class="ring-color-input" aria-label="Välj färg" />
       </span>
@@ -263,9 +267,14 @@ function renderWheel() {
   const ringCount = state.rings.length;
   const ringThickness = (outerR - innerR) / ringCount;
 
+  // Convention: list index 0 = top of list = OUTERMOST ring on the wheel.
+  // Convert a list index to a position-from-center.
+  const posFromCenter = (listIdx) => ringCount - 1 - listIdx;
+
   // Background bands per ring
   state.rings.forEach((ring, i) => {
-    const r1 = innerR + i * ringThickness;
+    const pos = posFromCenter(i);
+    const r1 = innerR + pos * ringThickness;
     const r2 = r1 + ringThickness;
     appendSvg('path', {
       d: ringBandPath(r1, r2),
@@ -280,7 +289,8 @@ function renderWheel() {
     const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
     if (ringIdx === -1) return;
     const ring = state.rings[ringIdx];
-    const r1 = innerR + ringIdx * ringThickness;
+    const pos = posFromCenter(ringIdx);
+    const r1 = innerR + pos * ringThickness;
     const r2 = r1 + ringThickness;
 
     const startAngle = weekToAngle(act.startWeek);
@@ -444,6 +454,71 @@ function toast(msg) {
   t.textContent = msg;
   t.hidden = false;
   setTimeout(() => { t.hidden = true; }, 1800);
+}
+
+// ---------- Drag-and-drop reorder of rings ----------
+let draggedRingId = null;
+
+function setupRingDragAndDrop() {
+  ringList.addEventListener('dragstart', e => {
+    const item = e.target.closest('.ring-item');
+    if (!item) return;
+    draggedRingId = item.dataset.ringId;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    // Firefox needs some data set to start a drag
+    try { e.dataTransfer.setData('text/plain', draggedRingId); } catch {}
+  });
+
+  ringList.addEventListener('dragover', e => {
+    if (!draggedRingId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const item = e.target.closest('.ring-item');
+    clearDropMarkers();
+    if (!item || item.dataset.ringId === draggedRingId) return;
+    const rect = item.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    item.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+
+  ringList.addEventListener('drop', e => {
+    if (!draggedRingId) return;
+    e.preventDefault();
+    const item = e.target.closest('.ring-item');
+    clearDropMarkers();
+    if (!item || item.dataset.ringId === draggedRingId) {
+      draggedRingId = null;
+      return;
+    }
+    const targetId = item.dataset.ringId;
+    const rect = item.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+
+    const draggedIdx = state.rings.findIndex(r => r.id === draggedRingId);
+    if (draggedIdx === -1) { draggedRingId = null; return; }
+    const [moved] = state.rings.splice(draggedIdx, 1);
+
+    let targetIdx = state.rings.findIndex(r => r.id === targetId);
+    if (after) targetIdx += 1;
+    state.rings.splice(targetIdx, 0, moved);
+
+    draggedRingId = null;
+    saveState();
+    renderAll();
+  });
+
+  ringList.addEventListener('dragend', () => {
+    clearDropMarkers();
+    ringList.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    draggedRingId = null;
+  });
+
+  function clearDropMarkers() {
+    ringList.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+  }
 }
 
 // ---------- Add handlers ----------

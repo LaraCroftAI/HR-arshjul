@@ -189,14 +189,29 @@ h1, h2, h3 {
 }
 .ring-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
+  position: relative;
+  transition: opacity 120ms;
 }
+.ring-item.dragging { opacity: 0.4; }
+.ring-item.drop-before { box-shadow: 0 -2px 0 var(--accent); }
+.ring-item.drop-after  { box-shadow: 0  2px 0 var(--accent); }
+.ring-handle {
+  cursor: grab;
+  color: var(--ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+  letter-spacing: -2px;
+  padding: 0 2px;
+}
+.ring-handle:active { cursor: grabbing; }
 .ring-color {
   width: 28px;
   height: 28px;
