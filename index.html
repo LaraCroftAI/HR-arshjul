@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR Årshjul</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">○</span>
+        <span class="brand-name">HR Årshjul</span>
+      </div>
+      <div class="client-meta">
+        <label class="field">
+          <span class="field-label">Kund</span>
+          <input id="clientName" type="text" placeholder="t.ex. Acme AB" />
+        </label>
+        <label class="field">
+          <span class="field-label">År</span>
+          <input id="clientYear" type="number" min="2020" max="2100" value="2026" />
+        </label>
+      </div>
+      <div class="topbar-actions">
+        <button id="newBtn" class="btn btn-ghost">Nytt hjul</button>
+        <button id="uploadBtn" class="btn btn-ghost">Ladda upp bild</button>
+        <button id="exportBtn" class="btn btn-primary">Ladda ner bild</button>
+        <input id="fileInput" type="file" accept="image/png" hidden />
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-section">
+        <div class="section-head">
+          <h2>Ringar</h2>
+          <button id="addRingBtn" class="btn btn-small">+ Lägg till ring</button>
+        </div>
+        <p class="hint">Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön &amp; förmåner.</p>
+        <ul id="ringList" class="ring-list"></ul>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-head">
+          <h2>Aktiviteter</h2>
+          <button id="addActivityBtn" class="btn btn-small">+ Lägg till aktivitet</button>
+        </div>
+        <p class="hint">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår.</p>
+        <ul id="activityList" class="activity-list"></ul>
+      </div>
+    </section>
+
+    <section class="wheel-area">
+      <div class="wheel-frame">
+        <svg id="wheel" viewBox="-260 -260 520 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HR årshjul"></svg>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
