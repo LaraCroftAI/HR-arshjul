@@ -450,13 +450,12 @@ function toast(msg) {
 function addRing() {
   const usedColors = state.rings.map(r => r.color);
   const color = RING_PALETTE.find(c => !usedColors.includes(c)) || RING_PALETTE[state.rings.length % RING_PALETTE.length];
-  state.rings.push({ id: rid(), name: 'Ny ring', color });
+  state.rings.unshift({ id: rid(), name: 'Ny ring', color });
   saveState(); renderAll();
-  // focus new name input
+  // focus the new (top) name input
   setTimeout(() => {
-    const inputs = ringList.querySelectorAll('.ring-name');
-    const last = inputs[inputs.length - 1];
-    if (last) { last.focus(); last.select(); }
+    const first = ringList.querySelector('.ring-name');
+    if (first) { first.focus(); first.select(); }
   }, 0);
 }
 
@@ -465,7 +464,7 @@ function addActivity() {
     alert('Lägg till en ring först — aktiviteter tillhör en ring.');
     return;
   }
-  state.activities.push({
+  state.activities.unshift({
     id: rid(),
     name: 'Ny aktivitet',
     ringId: state.rings[0].id,
@@ -474,9 +473,8 @@ function addActivity() {
   });
   saveState(); renderAll();
   setTimeout(() => {
-    const inputs = activityList.querySelectorAll('.activity-name');
-    const last = inputs[inputs.length - 1];
-    if (last) { last.focus(); last.select(); last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    const first = activityList.querySelector('.activity-name');
+    if (first) { first.focus(); first.select(); }
   }, 0);
 }
 
