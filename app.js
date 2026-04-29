@@ -94,9 +94,9 @@ $('newBtn').addEventListener('click', () => {
   clientYearInput.value = state.year;
   saveState(); renderAll();
 });
-$('exportBtn').addEventListener('click', exportWheelPNG);
 $('uploadBtn').addEventListener('click', () => $('fileInput').click());
 $('fileInput').addEventListener('change', handleFileUpload);
+setupExportDropdown();
 
 // ---------- Render ----------
 function renderAll() {
@@ -553,75 +553,260 @@ function addActivity() {
   }, 0);
 }
 
-// ---------- Export to PNG (with embedded project data) ----------
+// ---------- Export — shared PNG builder + PNG/PDF/PPT outputs ----------
 const PNG_KEYWORD = 'arshjul-state';
 
-function exportWheelPNG() {
-  const svgClone = wheel.cloneNode(true);
-  svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  svgClone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+function setupExportDropdown() {
+  const btn = $('exportBtn');
+  const menu = $('exportMenu');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+  menu.addEventListener('click', async e => {
+    const fmt = e.target.dataset && e.target.dataset.format;
+    if (!fmt) return;
+    menu.hidden = true;
+    if (fmt === 'png') await exportWheelPNG();
+    else if (fmt === 'pdf') await exportWheelPDF();
+    else if (fmt === 'ppt') await exportWheelPPT();
+  });
+}
 
-  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  bg.setAttribute('x', '-260');
-  bg.setAttribute('y', '-260');
-  bg.setAttribute('width', '520');
-  bg.setAttribute('height', '520');
-  bg.setAttribute('fill', '#FFFFFF');
-  svgClone.insertBefore(bg, svgClone.firstChild);
+// Build the wheel as a PNG blob with embedded project state.
+async function buildWheelPngBlob() {
+  return new Promise((resolve, reject) => {
+    const svgClone = wheel.cloneNode(true);
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgClone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-  const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  styleEl.textContent = `
-    .wheel-month-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; fill: #5C6577; text-transform: uppercase; }
-    .wheel-center-label { font-family: 'Fraunces', Georgia, serif; font-weight: 500; fill: #1A2332; }
-    .wheel-arc-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 9.5px; font-weight: 500; fill: #ffffff; }
-  `;
-  svgClone.insertBefore(styleEl, svgClone.firstChild);
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', '-260');
+    bg.setAttribute('y', '-260');
+    bg.setAttribute('width', '520');
+    bg.setAttribute('height', '520');
+    bg.setAttribute('fill', '#FFFFFF');
+    svgClone.insertBefore(bg, svgClone.firstChild);
 
-  const svgString = new XMLSerializer().serializeToString(svgClone);
-  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    styleEl.textContent = `
+      .wheel-month-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; fill: #5C6577; text-transform: uppercase; }
+      .wheel-center-label { font-family: 'Fraunces', Georgia, serif; font-weight: 500; fill: #1A2332; }
+      .wheel-arc-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 9.5px; font-weight: 500; fill: #ffffff; }
+    `;
+    svgClone.insertBefore(styleEl, svgClone.firstChild);
 
-  const img = new Image();
-  img.onload = () => {
-    const size = 2400;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, size, size);
-    ctx.drawImage(img, 0, 0, size, size);
-    URL.revokeObjectURL(url);
+    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
 
-    canvas.toBlob(async (pngBlob) => {
-      if (!pngBlob) { toast('Kunde inte spara bilden'); return; }
-      try {
-        const arrayBuf = await pngBlob.arrayBuffer();
-        const stateJson = JSON.stringify(state);
-        const stateB64 = btoa(unescape(encodeURIComponent(stateJson)));
-        const pngBytes = injectTextChunk(new Uint8Array(arrayBuf), PNG_KEYWORD, stateB64);
-        const finalBlob = new Blob([pngBytes], { type: 'image/png' });
-        const dlUrl = URL.createObjectURL(finalBlob);
-        const a = document.createElement('a');
-        a.href = dlUrl;
-        const safeClient = (state.client || 'kund').trim().replace(/[^a-zA-ZåäöÅÄÖ0-9_-]/g, '_') || 'kund';
-        a.download = `arshjul-${safeClient}-${state.year}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
-        toast('Bilden är nedladdad');
-      } catch (e) {
-        console.error(e);
-        toast('Något gick fel vid sparning');
-      }
-    }, 'image/png');
+    const img = new Image();
+    img.onload = () => {
+      const size = 2400;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(async (pngBlob) => {
+        if (!pngBlob) { reject(new Error('canvas.toBlob returned null')); return; }
+        try {
+          const arrayBuf = await pngBlob.arrayBuffer();
+          const stateJson = JSON.stringify(state);
+          const stateB64 = btoa(unescape(encodeURIComponent(stateJson)));
+          const pngBytes = injectTextChunk(new Uint8Array(arrayBuf), PNG_KEYWORD, stateB64);
+          resolve(new Blob([pngBytes], { type: 'image/png' }));
+        } catch (e) { reject(e); }
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to render SVG to image'));
+    };
+    img.src = url;
+  });
+}
+
+async function exportWheelPNG() {
+  try {
+    const blob = await buildWheelPngBlob();
+    downloadBlob(blob, `arshjul-${safeClientName()}-${state.year}.png`);
+    toast('Bilden är nedladdad');
+  } catch (e) {
+    console.error(e);
+    toast('Kunde inte spara bilden');
+  }
+}
+
+async function exportWheelPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    toast('PDF-biblioteket laddar fortfarande — försök igen om en stund');
+    return;
+  }
+  try {
+    const blob = await buildWheelPngBlob();
+    const dataUrl = await blobToDataUrl(blob);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageW = 297, pageH = 210;
+
+    // Title
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(20);
+    doc.setTextColor(26, 35, 50);
+    const title = (state.client || 'Årshjul').trim();
+    doc.text(`${title}  ·  ${state.year}`, pageW / 2, 18, { align: 'center' });
+
+    // Wheel (square, centered)
+    const imgSize = 165;
+    doc.addImage(dataUrl, 'PNG', (pageW - imgSize) / 2, 26, imgSize, imgSize);
+
+    // Legend at the bottom — wraps if needed
+    drawPdfLegend(doc, pageW, pageH);
+
+    doc.save(`arshjul-${safeClientName()}-${state.year}.pdf`);
+    toast('PDF nedladdad');
+  } catch (e) {
+    console.error(e);
+    toast('Kunde inte skapa PDF');
+  }
+}
+
+function drawPdfLegend(doc, pageW, pageH) {
+  if (!state.rings.length) return;
+  doc.setFontSize(10);
+  doc.setTextColor(60, 70, 90);
+  const margin = 18;
+  const swatch = 3.6;
+  const gap = 3;
+  const itemGap = 8;
+  const rowHeight = 6.5;
+  let y = pageH - 12;
+  let x = margin;
+  state.rings.forEach(ring => {
+    const label = ring.name || 'Ring';
+    const labelW = doc.getTextWidth(label);
+    const itemW = swatch + gap + labelW + itemGap;
+    if (x + itemW > pageW - margin) {
+      x = margin;
+      y -= rowHeight;
+    }
+    const rgb = hexToRgb(ring.color);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(x, y - swatch + 0.4, swatch, swatch, 'F');
+    doc.setTextColor(40, 45, 60);
+    doc.text(label, x + swatch + gap, y);
+    x += itemW;
+  });
+}
+
+async function exportWheelPPT() {
+  if (typeof PptxGenJS === 'undefined') {
+    toast('PowerPoint-biblioteket laddar fortfarande — försök igen om en stund');
+    return;
+  }
+  try {
+    const blob = await buildWheelPngBlob();
+    const dataUrl = await blobToDataUrl(blob);
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_WIDE'; // 13.333" x 7.5"
+    const slideW = 13.333, slideH = 7.5;
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title
+    slide.addText(`${(state.client || 'Årshjul').trim()}  ·  ${state.year}`, {
+      x: 0.5, y: 0.3, w: slideW - 1, h: 0.6,
+      fontSize: 24, fontFace: 'Calibri', color: '1A2332',
+      align: 'center', valign: 'middle', bold: false,
+    });
+
+    // Wheel image (centered, square)
+    const imgSize = 5.8;
+    slide.addImage({
+      data: dataUrl,
+      x: (slideW - imgSize) / 2, y: 1.0,
+      w: imgSize, h: imgSize,
+    });
+
+    // Legend row at bottom
+    addPptLegend(slide, slideW, slideH);
+
+    await pres.writeFile({ fileName: `arshjul-${safeClientName()}-${state.year}.pptx` });
+    toast('PowerPoint nedladdad');
+  } catch (e) {
+    console.error(e);
+    toast('Kunde inte skapa PowerPoint');
+  }
+}
+
+function addPptLegend(slide, slideW, slideH) {
+  if (!state.rings.length) return;
+  const swatch = 0.16;
+  const gap = 0.12;
+  const itemGap = 0.4;
+  const fontSize = 11;
+  const charWidthApprox = 0.075;
+  const margin = 0.5;
+  const rowHeight = 0.32;
+  let y = slideH - 0.6;
+  let x = margin;
+  state.rings.forEach(ring => {
+    const label = ring.name || 'Ring';
+    const textW = label.length * charWidthApprox;
+    const itemW = swatch + gap + textW + itemGap;
+    if (x + itemW > slideW - margin) { x = margin; y += rowHeight; }
+    slide.addShape('rect', {
+      x, y: y - swatch / 2, w: swatch, h: swatch,
+      fill: { color: ring.color.replace('#', '') },
+      line: { color: ring.color.replace('#', ''), width: 0 },
+    });
+    slide.addText(label, {
+      x: x + swatch + gap, y: y - rowHeight / 2,
+      w: textW + 0.2, h: rowHeight,
+      fontSize, fontFace: 'Calibri', color: '1A2332',
+      valign: 'middle',
+    });
+    x += itemW;
+  });
+}
+
+// ---------- Small helpers for export ----------
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+function safeClientName() {
+  return (state.client || 'kund').trim().replace(/[^a-zA-ZåäöÅÄÖ0-9_-]/g, '_') || 'kund';
+}
+function hexToRgb(hex) {
+  const c = hex.replace('#', '');
+  return {
+    r: parseInt(c.slice(0, 2), 16),
+    g: parseInt(c.slice(2, 4), 16),
+    b: parseInt(c.slice(4, 6), 16),
   };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    toast('Kunde inte rendera hjulet — försök igen');
-  };
-  img.src = url;
 }
 
 // ---------- Upload PNG and restore project ----------
