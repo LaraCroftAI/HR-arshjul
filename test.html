@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>HR Årshjul — proxy-test</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, sans-serif; padding: 30px; max-width: 800px; margin: 0 auto; }
+    button { padding: 12px 20px; font-size: 16px; cursor: pointer; margin: 6px 0; }
+    pre { background: #f4f1eb; padding: 16px; border-radius: 6px; white-space: pre-wrap; font-size: 14px; line-height: 1.4; }
+    label { display: block; margin: 10px 0 4px; font-weight: 600; }
+    input { padding: 8px 12px; font-size: 14px; width: 320px; }
+    h1 { font-size: 22px; }
+    .ok { color: #1a6e1a; }
+    .fail { color: #b03a3a; }
+  </style>
+</head>
+<body>
+  <h1>Proxy-test för HR Årshjul</h1>
+  <p>Den här sidan testar om <code>/api/admin</code>-proxyn fungerar i din webbläsare.
+     Inget från huvudappen körs här — det är ren testkod.</p>
+
+  <h2>Steg 1 — logga in</h2>
+  <label>E-post</label>
+  <input id="email" type="email" placeholder="namn@exempel.se" />
+  <label>Lösenord</label>
+  <input id="password" type="password" />
+  <br><button id="loginBtn">Logga in</button>
+
+  <h2>Steg 2 — testa anrop</h2>
+  <button id="testBtn" disabled>Testa /api/admin (list)</button>
+
+  <h2>Resultat</h2>
+  <pre id="output">(inget än)</pre>
+
+  <script>
+  const SUPABASE_URL = 'https://afcagjgztvmdpeljrjru.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable__QjXJj6z2J2FaCyWvRVSWg_pbiIbHiI';
+  const out = document.getElementById('output');
+  let token = null;
+
+  function log(s, cls) {
+    out.innerHTML += (cls ? '<span class="' + cls + '">' : '') + s + (cls ? '</span>' : '') + '\n';
+  }
+  function clear() { out.innerHTML = ''; }
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    clear();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) { log('Fyll i e-post och lösenord.', 'fail'); return; }
+    log('Loggar in via ' + SUPABASE_URL + '/auth/v1/token...');
+    try {
+      const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+        body: JSON.stringify({ email, password }),
+      });
+      log('Login status: ' + res.status);
+      const data = await res.json();
+      if (data.access_token) {
+        token = data.access_token;
+        log('LYCKADES — token mottagen (första 30 tkn): ' + token.slice(0, 30) + '...', 'ok');
+        log('User: ' + (data.user && data.user.email));
+        document.getElementById('testBtn').disabled = false;
+      } else {
+        log('FEL: ' + JSON.stringify(data), 'fail');
+      }
+    } catch (err) {
+      log('FETCH FEL: ' + err.message, 'fail');
+    }
+  });
+
+  document.getElementById('testBtn').addEventListener('click', async () => {
+    clear();
+    if (!token) { log('Logga in först.', 'fail'); return; }
+
+    log('=== TEST 1: Vercel-proxy /api/admin (list) ===');
+    const t0 = Date.now();
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'list' }),
+      });
+      const ms = Date.now() - t0;
+      const text = await res.text();
+      log('Status: ' + res.status + ' (på ' + ms + 'ms)', res.ok ? 'ok' : 'fail');
+      log('Body: ' + text.slice(0, 400));
+    } catch (err) {
+      log('FETCH FEL: ' + err.message, 'fail');
+    }
+
+    log('');
+    log('=== TEST 2: Direkt mot Supabase /rest/v1/wheels ===');
+    const t1 = Date.now();
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?select=user_id&limit=1', {
+        headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      const ms = Date.now() - t1;
+      const text = await res.text();
+      log('Status: ' + res.status + ' (på ' + ms + 'ms)', res.ok ? 'ok' : 'fail');
+      log('Body: ' + text.slice(0, 200));
+    } catch (err) {
+      const ms = Date.now() - t1;
+      log('FETCH FEL (på ' + ms + 'ms): ' + err.message, 'fail');
+    }
+  });
+  </script>
+</body>
+</html>
