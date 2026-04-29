@@ -1179,8 +1179,24 @@ function setupAuthHandlers() {
   });
 
   $('logoutBtn').addEventListener('click', async () => {
-    if (!sb) return;
-    await sb.auth.signOut();
+    // Best-effort server signOut (don't wait if it hangs)
+    if (sb) {
+      try {
+        await Promise.race([
+          sb.auth.signOut(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+        ]);
+      } catch {}
+    }
+    // Clear the local Supabase auth session so the next reload lands on the login screen.
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-')) localStorage.removeItem(key);
+      }
+    } catch {}
+    // Hard reload to a clean state.
+    window.location.reload();
   });
 
   // Admin modal wiring
