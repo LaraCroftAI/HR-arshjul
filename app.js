@@ -1265,23 +1265,25 @@ async function refreshAdminStatus() {
     return;
   }
   try {
-    const { data, error } = await sb
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', currentUser.id)
-      .maybeSingle();
+    // Use SECURITY DEFINER RPC — bypasses RLS, returns boolean directly.
+    // This is more reliable than a SELECT against the admins table because
+    // it doesn't depend on policy evaluation, JWT freshness for table access,
+    // or PostgREST row visibility. If the call succeeds, we know the answer.
+    const { data, error } = await sb.rpc('is_admin');
+    console.log('[admin-check] rpc is_admin result:', { data, error });
     if (error) {
-      console.warn('refreshAdminStatus query error:', error);
+      console.warn('refreshAdminStatus rpc error:', error);
       return; // keep prior state
     }
-    if (data) {
-      // Confirmed admin — show and remember
+    if (data === true) {
       isAdmin = true;
       $('adminBtn').hidden = false;
+    } else if (data === false) {
+      // Definitive: not an admin
+      isAdmin = false;
+      $('adminBtn').hidden = true;
     }
-    // If data is null we don't flip back to non-admin. Empty results can come
-    // from a transient race (stale JWT, rate limit, etc.) and we don't want
-    // the button to disappear on the user once we've shown it.
+    // If data is null/undefined (transient), don't change state
   } catch (err) {
     console.warn('refreshAdminStatus exception:', err);
   }
