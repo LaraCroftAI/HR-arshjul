@@ -1122,12 +1122,22 @@ async function initAuth() {
 
   setupAuthHandlers();
 
-  sb.auth.onAuthStateChange(async (_event, session) => {
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      isPasswordRecovery = true;
+      showLoginScreen();
+      setAuthMode('newpw');
+      return;
+    }
+    // While the user is in the middle of setting a new password,
+    // don't auto-route them into the app even though Supabase has a session.
+    if (isPasswordRecovery) return;
     if (session && session.user) await onSignedIn(session.user);
     else onSignedOut();
   });
 
   const { data } = await sb.auth.getSession();
+  if (isPasswordRecovery) return; // PASSWORD_RECOVERY already routed us to the new-password screen
   if (data.session && data.session.user) {
     await onSignedIn(data.session.user);
   } else {
@@ -1135,25 +1145,59 @@ async function initAuth() {
   }
 }
 
-// 'signin' or 'signup'
+// 'signin' | 'signup' | 'reset' | 'newpw'
 let authMode = 'signin';
+let isPasswordRecovery = false;
 
 function setAuthMode(mode) {
   authMode = mode;
+  const emailEl = $('authEmail');
+  const pwEl = $('authPassword');
+
+  // Default visibility — adjusted per mode below
+  emailEl.hidden = false;
+  emailEl.disabled = false;
+  pwEl.hidden = false;
+  pwEl.disabled = false;
+  $('authForgotRow').hidden = true;
+  $('authToggleRow').hidden = true;
+  $('authBackRow').hidden = true;
+
   if (mode === 'signin') {
     $('authTitle').textContent = 'Logga in';
     $('authSub').textContent = 'Logga in med din e-post och ditt lösenord.';
     $('authSubmitBtn').textContent = 'Logga in';
-    $('authPassword').setAttribute('autocomplete', 'current-password');
+    pwEl.setAttribute('autocomplete', 'current-password');
+    pwEl.placeholder = 'Lösenord (minst 6 tecken)';
     $('authToggleText').textContent = 'Inget konto än?';
     $('authToggleLink').textContent = 'Skapa konto';
-  } else {
+    $('authForgotRow').hidden = false;
+    $('authToggleRow').hidden = false;
+  } else if (mode === 'signup') {
     $('authTitle').textContent = 'Skapa konto';
     $('authSub').textContent = 'Välj ett lösenord (minst 6 tecken). Du behåller samma e-post och lösenord för att logga in nästa gång.';
     $('authSubmitBtn').textContent = 'Skapa konto';
-    $('authPassword').setAttribute('autocomplete', 'new-password');
+    pwEl.setAttribute('autocomplete', 'new-password');
+    pwEl.placeholder = 'Lösenord (minst 6 tecken)';
     $('authToggleText').textContent = 'Har du redan ett konto?';
     $('authToggleLink').textContent = 'Logga in';
+    $('authToggleRow').hidden = false;
+  } else if (mode === 'reset') {
+    $('authTitle').textContent = 'Glömt lösenord';
+    $('authSub').textContent = 'Skriv in din e-postadress så skickar vi en länk för att välja ett nytt lösenord.';
+    $('authSubmitBtn').textContent = 'Skicka återställningslänk';
+    pwEl.hidden = true;
+    pwEl.disabled = true;
+    $('authBackRow').hidden = false;
+  } else if (mode === 'newpw') {
+    $('authTitle').textContent = 'Välj nytt lösenord';
+    $('authSub').textContent = 'Skriv in det nya lösenordet (minst 6 tecken). Du loggas in automatiskt när det är sparat.';
+    $('authSubmitBtn').textContent = 'Spara nytt lösenord';
+    emailEl.hidden = true;
+    emailEl.disabled = true;
+    pwEl.setAttribute('autocomplete', 'new-password');
+    pwEl.placeholder = 'Nytt lösenord (minst 6 tecken)';
+    pwEl.value = '';
   }
   showAuthMessage('', false);
 }
@@ -1176,12 +1220,74 @@ function translateAuthError(message) {
   return message || 'Något gick fel. Försök igen.';
 }
 
+async function handleResetRequest(email) {
+  const submitBtn = $('authSubmitBtn');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Skickar...';
+  showAuthMessage('', false);
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    if (error) throw error;
+    showAuthMessage(`Vi har skickat en återställningslänk till ${email}. Klicka på länken i mejlet för att välja ett nytt lösenord. Om du inte ser mejlet, kolla skräpposten.`, false);
+  } catch (err) {
+    showAuthMessage(translateAuthError(err.message || err), true);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+  }
+}
+
+async function handleNewPassword(password) {
+  const submitBtn = $('authSubmitBtn');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sparar...';
+  showAuthMessage('', false);
+  try {
+    const { data, error } = await sb.auth.updateUser({ password });
+    if (error) throw error;
+    isPasswordRecovery = false;
+    const user = (data && data.user) || null;
+    if (user) {
+      await onSignedIn(user);
+    } else {
+      const sessRes = await sb.auth.getSession();
+      const sessUser = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.user;
+      if (sessUser) await onSignedIn(sessUser);
+      else {
+        setAuthMode('signin');
+        showAuthMessage('Lösenordet är uppdaterat. Logga in med det nya lösenordet.', false);
+      }
+    }
+  } catch (err) {
+    showAuthMessage(translateAuthError(err.message || err), true);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+  }
+}
+
 function setupAuthHandlers() {
   $('authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!sb) return;
     const email = $('authEmail').value.trim();
     const password = $('authPassword').value;
+
+    if (authMode === 'reset') {
+      if (!email) return;
+      await handleResetRequest(email);
+      return;
+    }
+    if (authMode === 'newpw') {
+      if (!password) return;
+      await handleNewPassword(password);
+      return;
+    }
+
     if (!email || !password) return;
     const submitBtn = $('authSubmitBtn');
     const originalLabel = submitBtn.textContent;
@@ -1230,6 +1336,16 @@ function setupAuthHandlers() {
   $('authToggleLink').addEventListener('click', (e) => {
     e.preventDefault();
     setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+  });
+
+  $('authForgotLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    setAuthMode('reset');
+  });
+
+  $('authBackLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    setAuthMode('signin');
   });
 
   $('logoutBtn').addEventListener('click', async () => {

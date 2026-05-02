@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=25" />
+  <link rel="stylesheet" href="style.css?v=26" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -32,9 +32,15 @@
         <button class="btn btn-primary btn-block" type="submit" id="authSubmitBtn">Logga in</button>
       </form>
       <div id="authMessage" class="auth-message" hidden></div>
-      <div class="auth-toggle">
+      <div class="auth-forgot" id="authForgotRow">
+        <a href="#" id="authForgotLink">Glömt lösenord?</a>
+      </div>
+      <div class="auth-toggle" id="authToggleRow">
         <span id="authToggleText">Inget konto än?</span>
         <a href="#" id="authToggleLink">Skapa konto</a>
+      </div>
+      <div class="auth-toggle" id="authBackRow" hidden>
+        <a href="#" id="authBackLink">← Tillbaka till inloggning</a>
       </div>
     </div>
   </div>
@@ -137,6 +143,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=25" defer></script>
+  <script src="app.js?v=26" defer></script>
 </body>
 </html>

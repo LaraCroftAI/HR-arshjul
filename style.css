@@ -609,6 +609,19 @@ h1, h2, h3 {
 }
 .auth-toggle a:hover { color: var(--accent); }
 
+.auth-forgot {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+}
+.auth-forgot a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.auth-forgot a:hover { color: var(--accent-ink); }
+
 /* ---------- User block in topbar ---------- */
 .user-block {
   display: flex;
