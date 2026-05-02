@@ -360,7 +360,7 @@ function renderWheel() {
     });
 
     // Radial text (reads from inner edge outward, centered in the arc)
-    appendRadialText(act.name, r1, r2, startAngle, endAngle);
+    appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
   });
 
   // Month dividers (lines at each month boundary)
@@ -481,44 +481,98 @@ function ringBandPath(r1, r2) {
   ].join(' ');
 }
 
-function appendRadialText(text, innerR, outerR, startAngle, endAngle) {
+function appendRadialText(text, innerR, outerR, startAngle, endAngle, lengthWeeks) {
   // Text reads radially: from inner edge of the ring outward, centered in the arc.
   // This gives long activity names room even when the arc is narrow.
   const fontSize = 10;
   const charWidth = 5.6; // empirical width per char at 10px Inter
   const padding = 6;     // space at each end of the band
+  const lineHeight = fontSize + 2;
 
   const radialLength = outerR - innerR - padding * 2;
   const arcThickness = (endAngle - startAngle) * (innerR + outerR) / 2;
 
-  // We need to fit text along the radial axis. Allow up to radialLength.
-  let maxChars = Math.max(0, Math.floor(radialLength / charWidth));
-  // But the character height (perpendicular to text direction) must fit in the arc thickness.
-  // If the arc segment is too narrow (small lengthWeeks on a wide ring), skip the label.
   if (arcThickness < fontSize + 2) return;
+  const maxChars = Math.max(0, Math.floor(radialLength / charWidth));
   if (maxChars < 3) return;
 
-  let label = text;
-  if (label.length > maxChars) label = label.slice(0, Math.max(1, maxChars - 1)) + '…';
+  // Wrap onto multiple radial lines only if the activity is wider than 2 weeks
+  // AND the arc has room for an extra line. Otherwise fall back to ellipsis.
+  const allowWrap = lengthWeeks > 2;
+  const maxLinesByArc = Math.max(1, Math.floor(arcThickness / lineHeight));
+  const maxLines = allowWrap ? Math.min(maxLinesByArc, 3) : 1;
+
+  const lines = wrapRadialLabel(text, maxChars, maxLines);
 
   const midAngle = (startAngle + endAngle) / 2;
-  // Position text centered in the radial band
   const midR = (innerR + outerR) / 2;
-  const x = midR * Math.cos(midAngle);
-  const y = midR * Math.sin(midAngle);
-
-  // Rotate text so its baseline runs radially outward.
-  // SVG rotate(deg) rotates clockwise; midAngle in degrees gives outward direction.
+  const cx = midR * Math.cos(midAngle);
+  const cy = midR * Math.sin(midAngle);
   const rotation = midAngle * 180 / Math.PI;
 
-  appendSvg('text', {
-    x, y,
-    'text-anchor': 'middle',
-    'dominant-baseline': 'middle',
-    transform: `rotate(${rotation} ${x} ${y})`,
-    class: 'wheel-arc-label',
-    'font-size': fontSize,
-  }, label);
+  // Lines stack tangentially (perpendicular to the radial text direction)
+  const perpX = -Math.sin(midAngle);
+  const perpY =  Math.cos(midAngle);
+
+  lines.forEach((line, i) => {
+    const offset = (i - (lines.length - 1) / 2) * lineHeight;
+    const x = cx + offset * perpX;
+    const y = cy + offset * perpY;
+    appendSvg('text', {
+      x, y,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+      transform: `rotate(${rotation} ${x} ${y})`,
+      class: 'wheel-arc-label',
+      'font-size': fontSize,
+    }, line);
+  });
+}
+
+function wrapRadialLabel(text, maxChars, maxLines) {
+  if (maxLines <= 1 || text.length <= maxChars) {
+    if (text.length <= maxChars) return [text];
+    return [text.slice(0, Math.max(1, maxChars - 1)) + '…'];
+  }
+
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  let consumed = 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const candidate = current ? current + ' ' + word : word;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      consumed = i + 1;
+    } else {
+      if (current) {
+        lines.push(current);
+        if (lines.length === maxLines) { current = ''; break; }
+      }
+      // Word is longer than the line on its own — truncate it.
+      if (word.length > maxChars) {
+        current = word.slice(0, maxChars);
+        consumed = i + 1;
+      } else {
+        current = word;
+        consumed = i + 1;
+      }
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+
+  // If not all words fit, ellipsize the last line
+  if (consumed < words.length) {
+    const last = lines[lines.length - 1] || '';
+    const trimmed = last.length >= maxChars
+      ? last.slice(0, Math.max(1, maxChars - 1)) + '…'
+      : last + '…';
+    lines[lines.length - 1] = trimmed;
+  }
+
+  return lines;
 }
 
 // ---------- Helpers ----------
