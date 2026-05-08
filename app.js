@@ -94,6 +94,7 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Startvecka',
     'panel.activities.length': 'Längd v.',
+    'brand.name': 'HR Årshjul',
     'wheel.aria': 'HR årshjul',
     'wheel.centerFallback': 'Årshjul',
     'wheel.emptyHint': 'Lägg till en ring för att börja',
@@ -230,6 +231,7 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Start week',
     'panel.activities.length': 'Length w.',
+    'brand.name': 'HR Annual Agenda',
     'wheel.aria': 'HR year wheel',
     'wheel.centerFallback': 'Year wheel',
     'wheel.emptyHint': 'Add a ring to begin',
@@ -331,6 +333,7 @@ function applyI18n() {
     el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
   });
   document.documentElement.lang = currentLang;
+  document.title = t('brand.name');
 }
 
 function setLanguage(lang) {
