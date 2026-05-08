@@ -90,6 +90,7 @@ const I18N = {
     'topbar.exportPng': 'Som bild (PNG)',
     'topbar.exportPdf': 'Som PDF',
     'topbar.exportPpt': 'Som PowerPoint',
+    'topbar.exportIcs': 'Som kalender (.ics)',
     'topbar.adminLink': 'Hantera användare',
     'topbar.logout': 'Logga ut',
     'panel.rings.title': 'Ringar',
@@ -126,6 +127,9 @@ const I18N = {
     'toast.pdfFailed': 'Kunde inte skapa PDF',
     'toast.pptDownloaded': 'PowerPoint nedladdad',
     'toast.pptFailed': 'Kunde inte skapa PowerPoint',
+    'toast.icsDownloaded': 'Kalenderfilen är nedladdad',
+    'toast.icsFailed': 'Kunde inte skapa kalenderfilen',
+    'toast.icsEmpty': 'Inga aktiviteter att exportera',
     'toast.pdfLoading': 'PDF-biblioteket laddar fortfarande — försök igen om en stund',
     'toast.pptLoading': 'PowerPoint-biblioteket laddar fortfarande — försök igen om en stund',
     'toast.importLoading': 'Importbiblioteket laddar — försök igen om en stund',
@@ -232,6 +236,7 @@ const I18N = {
     'topbar.exportPng': 'As image (PNG)',
     'topbar.exportPdf': 'As PDF',
     'topbar.exportPpt': 'As PowerPoint',
+    'topbar.exportIcs': 'As calendar (.ics)',
     'topbar.adminLink': 'Manage users',
     'topbar.logout': 'Sign out',
     'panel.rings.title': 'Rings',
@@ -268,6 +273,9 @@ const I18N = {
     'toast.pdfFailed': 'Couldn\'t create PDF',
     'toast.pptDownloaded': 'PowerPoint downloaded',
     'toast.pptFailed': 'Couldn\'t create PowerPoint',
+    'toast.icsDownloaded': 'Calendar file downloaded',
+    'toast.icsFailed': 'Couldn\'t create calendar file',
+    'toast.icsEmpty': 'No activities to export',
     'toast.pdfLoading': 'PDF library still loading — try again in a moment',
     'toast.pptLoading': 'PowerPoint library still loading — try again in a moment',
     'toast.importLoading': 'Import library loading — try again in a moment',
@@ -1371,6 +1379,7 @@ function setupExportDropdown() {
     if (fmt === 'png') await exportWheelPNG();
     else if (fmt === 'pdf') await exportWheelPDF();
     else if (fmt === 'ppt') await exportWheelPPT();
+    else if (fmt === 'ics') await exportWheelICS();
   });
 }
 
@@ -1630,6 +1639,106 @@ function addPptLegend(slide, slideW, slideH) {
     });
     x += itemW;
   });
+}
+
+// ---------- ICS calendar export ----------
+// Each activity becomes one all-day VEVENT spanning startWeek..startWeek+lengthWeeks.
+// UIDs are stable across exports so re-importing into Outlook updates the
+// existing event instead of creating a duplicate.
+function isoWeek1Monday(year) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7; // 1=Mon..7=Sun
+  jan4.setUTCDate(jan4.getUTCDate() - (day - 1));
+  return jan4;
+}
+function dateFromYearWeek(year, week) {
+  const m = isoWeek1Monday(year);
+  m.setUTCDate(m.getUTCDate() + (week - 1) * 7);
+  return m;
+}
+function icsDate(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${day}`;
+}
+function icsTimestamp() {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  const ss = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${y}${m}${day}T${hh}${mm}${ss}Z`;
+}
+function icsEscape(text) {
+  return String(text || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+function icsFold(line) {
+  // RFC 5545: lines should be folded at 75 octets with CRLF + space
+  if (line.length <= 75) return line;
+  const parts = [];
+  let i = 0;
+  while (i < line.length) {
+    parts.push((i === 0 ? '' : ' ') + line.slice(i, i + (i === 0 ? 75 : 74)));
+    i += (i === 0 ? 75 : 74);
+  }
+  return parts.join('\r\n');
+}
+function buildIcs() {
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const wheelKey = (currentUser && currentUser.id) || ('anon-' + (state.client || 'wheel').toLowerCase().replace(/\s+/g, '-'));
+  const ringById = new Map(state.rings.map(r => [r.id, r]));
+  const stamp = icsTimestamp();
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//HR Arshjul//hr-arshjul.vercel.app//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+  ];
+  const calName = `${state.client || t('wheel.centerFallback')} · ${year}`;
+  lines.push(icsFold('X-WR-CALNAME:' + icsEscape(calName)));
+  state.activities.forEach(act => {
+    const start = dateFromYearWeek(year, act.startWeek);
+    const end = dateFromYearWeek(year, act.startWeek + act.lengthWeeks);
+    const ring = ringById.get(act.ringId);
+    const ringName = ring ? ring.name : '';
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${wheelKey}-${act.id}@hr-arshjul.vercel.app`);
+    lines.push(`DTSTAMP:${stamp}`);
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(start)}`);
+    lines.push(`DTEND;VALUE=DATE:${icsDate(end)}`);
+    lines.push(icsFold('SUMMARY:' + icsEscape(act.name)));
+    if (ringName) lines.push(icsFold('DESCRIPTION:' + icsEscape(ringName)));
+    if (ringName) lines.push(icsFold('CATEGORIES:' + icsEscape(ringName)));
+    lines.push('SEQUENCE:0');
+    lines.push('TRANSP:TRANSPARENT');
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n') + '\r\n';
+}
+
+async function exportWheelICS() {
+  try {
+    if (!state.activities.length) {
+      toast(t('toast.icsEmpty'));
+      return;
+    }
+    const ics = buildIcs();
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    downloadBlob(blob, `${exportFilenameStem()}-${safeClientName()}-${state.year}.ics`);
+    toast(t('toast.icsDownloaded'));
+  } catch (e) {
+    console.error(e);
+    toast(t('toast.icsFailed'));
+  }
 }
 
 function addPptLegendAgenda(slide, slideW, slideH) {
