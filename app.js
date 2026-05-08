@@ -1861,6 +1861,15 @@ async function initAuth() {
     showLoginScreen();
     return;
   }
+  // Detect a recovery URL BEFORE creating the supabase client — that way we
+  // can ignore the SIGNED_IN event that Supabase fires alongside (and before)
+  // the PASSWORD_RECOVERY event. Without this, the user lands on the app
+  // instead of the 'choose new password' screen.
+  const url = window.location.href;
+  if (/[#&?]type=recovery/i.test(url)) {
+    isPasswordRecovery = true;
+  }
+
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: true,
@@ -1871,21 +1880,23 @@ async function initAuth() {
   setupAuthHandlers();
 
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'PASSWORD_RECOVERY') {
+    if (event === 'PASSWORD_RECOVERY' || isPasswordRecovery) {
       isPasswordRecovery = true;
       showLoginScreen();
       setAuthMode('newpw');
       return;
     }
-    // While the user is in the middle of setting a new password,
-    // don't auto-route them into the app even though Supabase has a session.
-    if (isPasswordRecovery) return;
     if (session && session.user) await onSignedIn(session.user);
     else onSignedOut();
   });
 
   const { data } = await sb.auth.getSession();
-  if (isPasswordRecovery) return; // PASSWORD_RECOVERY already routed us to the new-password screen
+  if (isPasswordRecovery) {
+    // The recovery link is valid — show the 'choose new password' screen.
+    showLoginScreen();
+    setAuthMode('newpw');
+    return;
+  }
   if (data.session && data.session.user) {
     await onSignedIn(data.session.user);
   } else {
