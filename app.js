@@ -868,46 +868,67 @@ function appendRadialText(text, innerR, outerR, startAngle, endAngle, lengthWeek
 }
 
 function wrapRadialLabel(text, maxChars, maxLines) {
-  if (maxLines <= 1 || text.length <= maxChars) {
+  if (maxLines <= 1) {
     if (text.length <= maxChars) return [text];
     return [text.slice(0, Math.max(1, maxChars - 1)) + '…'];
   }
+  if (text.length <= maxChars) return [text];
 
-  const words = text.split(/\s+/).filter(Boolean);
+  // Build tokens. Words that are much longer than the line are hard-chunked
+  // (so e.g. "Utvecklingssamtal" -> ["Utveckl","ingssam","tal"]).
+  // Words slightly over maxChars (e.g. "Performance" on a 10-char line)
+  // are kept whole and placed on their own line — visually they stick out
+  // a tiny bit but reading is far better than mid-word breaks.
+  const tokens = [];
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (word.length > maxChars * 1.3) {
+      for (let j = 0; j < word.length; j += maxChars) {
+        tokens.push({ text: word.slice(j, j + maxChars), standalone: true });
+      }
+    } else {
+      tokens.push({ text: word, standalone: word.length > maxChars });
+    }
+  }
+
   const lines = [];
   let current = '';
-  let consumed = 0;
+  let truncated = false;
 
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    const candidate = current ? current + ' ' + word : word;
-    if (candidate.length <= maxChars) {
-      current = candidate;
-      consumed = i + 1;
-    } else {
+  for (let i = 0; i < tokens.length; i++) {
+    const tk = tokens[i];
+    if (tk.standalone) {
       if (current) {
+        if (lines.length >= maxLines) { truncated = true; break; }
         lines.push(current);
-        if (lines.length === maxLines) { current = ''; break; }
+        current = '';
       }
-      // Word is longer than the line on its own — truncate it.
-      if (word.length > maxChars) {
-        current = word.slice(0, maxChars);
-        consumed = i + 1;
+      if (lines.length >= maxLines) { truncated = true; break; }
+      lines.push(tk.text);
+      if (lines.length >= maxLines && i < tokens.length - 1) { truncated = true; break; }
+    } else {
+      const candidate = current ? current + ' ' + tk.text : tk.text;
+      if (candidate.length <= maxChars) {
+        current = candidate;
       } else {
-        current = word;
-        consumed = i + 1;
+        if (current) {
+          if (lines.length >= maxLines) { truncated = true; break; }
+          lines.push(current);
+        }
+        if (lines.length >= maxLines) { truncated = true; current = ''; break; }
+        current = tk.text;
       }
     }
   }
-  if (current && lines.length < maxLines) lines.push(current);
+  if (current) {
+    if (lines.length < maxLines) lines.push(current);
+    else truncated = true;
+  }
 
-  // If not all words fit, ellipsize the last line
-  if (consumed < words.length) {
-    const last = lines[lines.length - 1] || '';
-    const trimmed = last.length >= maxChars
+  if (truncated && lines.length > 0) {
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = last.length >= maxChars
       ? last.slice(0, Math.max(1, maxChars - 1)) + '…'
       : last + '…';
-    lines[lines.length - 1] = trimmed;
   }
 
   return lines;
