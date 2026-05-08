@@ -685,14 +685,13 @@ h1, h2, h3 {
 }
 
 #logoutBtn {
-  background: transparent;
-  color: var(--ink-faint);
-  border-color: transparent;
+  background: var(--ink-soft);
+  color: #fff;
+  border-color: var(--ink-soft);
 }
 #logoutBtn:hover {
-  background: var(--surface-soft);
-  color: var(--ink-soft);
-  border-color: var(--line);
+  background: #4A5366;
+  border-color: #4A5366;
 }
 .auth-card .lang-toggle {
   margin: 24px auto 0;
