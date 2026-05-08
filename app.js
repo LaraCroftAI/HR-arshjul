@@ -1657,6 +1657,18 @@ function onSignedOut() {
   isAdmin = false;
   $('adminBtn').hidden = true;
   showLoginScreen();
+  // If we arrived from the admin page's "Glömt lösenord?" link, jump straight
+  // into the reset flow so the user doesn't have to find the link again.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('forgot') === '1' && authMode !== 'newpw') {
+      setAuthMode('reset');
+      params.delete('forgot');
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+      history.replaceState(null, '', newUrl);
+    }
+  } catch {}
 }
 
 function showAppScreen(user) {
