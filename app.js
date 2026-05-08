@@ -21,6 +21,24 @@ const RING_PALETTE = [
   '#A89F8E', // sten
 ];
 
+// Agenda layout uses one unique color per activity. The palette below extends
+// the muted earthy tone of the ring palette so 17–20 activities still look
+// cohesive. Cycles for activity counts beyond the palette length.
+const ACTIVITY_PALETTE = [
+  '#5B6B7A', '#87A096', '#B8624A', '#C8A04A', '#6B8AA6',
+  '#7A5266', '#8B8B5C', '#A89F8E', '#A05D6E', '#5E8B7E',
+  '#C4865A', '#8A7AB8', '#8B5A3C', '#6B9080', '#D4A574',
+  '#9CADCE', '#7C9885', '#B5838D', '#9C7A5C', '#6E8B6E',
+];
+
+function activityPaletteColor(idx) {
+  return ACTIVITY_PALETTE[idx % ACTIVITY_PALETTE.length];
+}
+
+function getLayout() {
+  return state && state.layout === 'agenda' ? 'agenda' : 'wheel';
+}
+
 // ---------- i18n ----------
 const I18N = {
   sv: {
@@ -98,6 +116,7 @@ const I18N = {
     'wheel.aria': 'HR årshjul',
     'wheel.centerFallback': 'Årshjul',
     'wheel.emptyHint': 'Lägg till en ring för att börja',
+    'agenda.emptyHint': 'Lägg till en aktivitet för att börja',
     'confirm.newWheel': 'Börja om med ett tomt årshjul? Nuvarande hjul försvinner.',
     'confirm.removeRing': 'Ta bort ringen och alla aktiviteter i den?',
     'confirm.removeEmail': 'Ta bort {email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.',
@@ -159,6 +178,9 @@ const I18N = {
     'admin.duplicate': 'Den här mejladressen finns redan på listan.',
     'admin.loadFailed': 'Kunde inte hämta listan: {err}',
     'lang.toggleAria': 'Välj språk',
+    'layout.toggleAria': 'Välj vy',
+    'layout.wheel': 'Klassisk',
+    'layout.agenda': 'Agenda',
   },
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -235,6 +257,7 @@ const I18N = {
     'wheel.aria': 'HR year wheel',
     'wheel.centerFallback': 'Year wheel',
     'wheel.emptyHint': 'Add a ring to begin',
+    'agenda.emptyHint': 'Add an activity to begin',
     'confirm.newWheel': 'Start over with a blank year wheel? The current wheel will be lost.',
     'confirm.removeRing': 'Remove the ring and all its activities?',
     'confirm.removeEmail': 'Remove {email} from the list? They can no longer create a new account, but existing accounts are unaffected.',
@@ -296,6 +319,9 @@ const I18N = {
     'admin.duplicate': 'This email is already on the list.',
     'admin.loadFailed': 'Couldn\'t load list: {err}',
     'lang.toggleAria': 'Choose language',
+    'layout.toggleAria': 'Choose view',
+    'layout.wheel': 'Classic',
+    'layout.agenda': 'Agenda',
   },
 };
 
@@ -356,6 +382,7 @@ function defaultState() {
   return {
     client: '',
     year: new Date().getFullYear(),
+    layout: 'wheel',
     rings: [
       { id: rid(), name: t('default.ring.workEnv'), color: RING_PALETTE[1] },
       { id: rid(), name: t('default.ring.development'), color: RING_PALETTE[0] },
@@ -464,11 +491,13 @@ $('downloadTemplateLink').addEventListener('click', e => {
 setupRingDragAndDrop();
 $('newBtn').addEventListener('click', () => {
   if (!confirm(t('confirm.newWheel'))) return;
+  const prevLayout = getLayout();
   state = defaultState();
   state.rings = [];
   state.activities = [];
   state.client = '';
   state.year = new Date().getFullYear();
+  state.layout = prevLayout;
   clientNameInput.value = '';
   clientYearInput.value = state.year;
   saveState(); renderAll();
@@ -477,12 +506,31 @@ $('uploadBtn').addEventListener('click', () => $('fileInput').click());
 $('fileInput').addEventListener('change', handleFileUpload);
 setupExportDropdown();
 
-// Language toggle — wire up all .lang-btn elements (auth screen and topbar)
-document.querySelectorAll('.lang-btn').forEach(btn => {
+// Language toggle — wire up all .lang-btn[data-lang] elements (auth screen and topbar)
+document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
   btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
   btn.classList.toggle('active', btn.dataset.lang === currentLang);
 });
+// Layout toggle — wire up .layout-btn elements
+document.querySelectorAll('.layout-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLayout(btn.dataset.layout));
+});
+function refreshLayoutToggle() {
+  const cur = getLayout();
+  document.querySelectorAll('.layout-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.layout === cur);
+  });
+}
+function setLayout(layout) {
+  if (layout !== 'wheel' && layout !== 'agenda') return;
+  state.layout = layout;
+  saveState();
+  refreshLayoutToggle();
+  renderWheel();
+  renderLegend();
+}
 applyI18n();
+refreshLayoutToggle();
 
 // ---------- Render ----------
 function renderAll() {
@@ -632,92 +680,168 @@ function renderActivitySelects() {
 
 function renderLegend() {
   legend.innerHTML = '';
-  state.rings.forEach(r => {
-    const span = document.createElement('span');
-    span.className = 'legend-item';
-    span.innerHTML = `<span class="legend-swatch" style="background:${r.color}"></span>${escapeHtml(r.name)}`;
-    legend.appendChild(span);
-  });
+  if (getLayout() === 'agenda') {
+    legend.classList.add('legend-agenda');
+    let n = 0;
+    const ordered = orderedAgendaActivities();
+    let currentRingId = '__nothing__';
+    ordered.forEach(entry => {
+      const ringId = entry.ring ? entry.ring.id : '__orphan__';
+      if (ringId !== currentRingId) {
+        currentRingId = ringId;
+        const heading = document.createElement('div');
+        heading.className = 'legend-heading';
+        heading.textContent = entry.ring ? entry.ring.name : '—';
+        legend.appendChild(heading);
+      }
+      n++;
+      const item = document.createElement('span');
+      item.className = 'legend-item';
+      item.innerHTML = `<span class="legend-swatch" style="background:${activityPaletteColor(n - 1)}"></span><span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}`;
+      legend.appendChild(item);
+    });
+  } else {
+    legend.classList.remove('legend-agenda');
+    state.rings.forEach(r => {
+      const span = document.createElement('span');
+      span.className = 'legend-item';
+      span.innerHTML = `<span class="legend-swatch" style="background:${r.color}"></span>${escapeHtml(r.name)}`;
+      legend.appendChild(span);
+    });
+  }
 }
 
 // ---------- Wheel rendering (SVG) ----------
+function drawMonthDividers(innerR, outerR) {
+  for (let m = 0; m < 12; m++) {
+    const angle = (m / 12) * Math.PI * 2 - Math.PI / 2;
+    appendSvg('line', {
+      x1: innerR * Math.cos(angle),
+      y1: innerR * Math.sin(angle),
+      x2: outerR * Math.cos(angle),
+      y2: outerR * Math.sin(angle),
+      stroke: '#8C95A6',
+      'stroke-width': 0.8,
+    });
+  }
+}
+
+// Builds the ordered list of activities for agenda layout: grouped by ring
+// (outermost = first ring's first activity), with orphaned activities at the
+// end. Each entry knows its display index (= ACTIVITY_PALETTE color slot).
+function orderedAgendaActivities() {
+  const out = [];
+  state.rings.forEach((ring, ringIdx) => {
+    state.activities.forEach(act => {
+      if (act.ringId === ring.id) out.push({ act, ring, ringIdx });
+    });
+  });
+  state.activities.forEach(act => {
+    if (!state.rings.some(r => r.id === act.ringId)) {
+      out.push({ act, ring: null, ringIdx: -1 });
+    }
+  });
+  return out;
+}
+
 function renderWheel() {
   while (wheel.firstChild) wheel.removeChild(wheel.firstChild);
 
   const innerR = 60;
   const outerR = 220;
   const monthLabelR = 245;
+  const layout = getLayout();
 
-  // No rings — show empty message
-  if (state.rings.length === 0) {
+  const empty = layout === 'wheel'
+    ? state.rings.length === 0
+    : state.activities.length === 0;
+  if (empty) {
     appendSvg('text', {
       x: 0, y: 0,
       'text-anchor': 'middle',
       'dominant-baseline': 'middle',
       class: 'wheel-month-label',
-    }, t('wheel.emptyHint'));
+    }, t(layout === 'agenda' ? 'agenda.emptyHint' : 'wheel.emptyHint'));
     return;
   }
 
-  const ringCount = state.rings.length;
-  const ringThickness = (outerR - innerR) / ringCount;
+  if (layout === 'wheel') {
+    const ringCount = state.rings.length;
+    const ringThickness = (outerR - innerR) / ringCount;
+    // Convention: list index 0 = top of list = OUTERMOST ring on the wheel.
+    const posFromCenter = (listIdx) => ringCount - 1 - listIdx;
 
-  // Convention: list index 0 = top of list = OUTERMOST ring on the wheel.
-  // Convert a list index to a position-from-center.
-  const posFromCenter = (listIdx) => ringCount - 1 - listIdx;
-
-  // Background bands per ring
-  state.rings.forEach((ring, i) => {
-    const pos = posFromCenter(i);
-    const r1 = innerR + pos * ringThickness;
-    const r2 = r1 + ringThickness;
-    appendSvg('path', {
-      d: ringBandPath(r1, r2),
-      fill: lightenColor(ring.color, 0.92),
-      stroke: '#8C95A6',
-      'stroke-width': 0.8,
+    state.rings.forEach((ring, i) => {
+      const pos = posFromCenter(i);
+      const r1 = innerR + pos * ringThickness;
+      const r2 = r1 + ringThickness;
+      appendSvg('path', {
+        d: ringBandPath(r1, r2),
+        fill: lightenColor(ring.color, 0.92),
+        stroke: '#8C95A6',
+        'stroke-width': 0.8,
+      });
     });
-  });
 
-  // Month dividers — drawn BEFORE activities so an activity arc that crosses
-  // a month boundary covers the line underneath it.
-  for (let m = 0; m < 12; m++) {
-    const angle = (m / 12) * Math.PI * 2 - Math.PI / 2;
-    const x1 = innerR * Math.cos(angle);
-    const y1 = innerR * Math.sin(angle);
-    const x2 = outerR * Math.cos(angle);
-    const y2 = outerR * Math.sin(angle);
-    appendSvg('line', {
-      x1, y1, x2, y2,
-      stroke: '#8C95A6',
-      'stroke-width': 0.8,
+    drawMonthDividers(innerR, outerR);
+
+    state.activities.forEach(act => {
+      const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
+      if (ringIdx === -1) return;
+      const ring = state.rings[ringIdx];
+      const pos = posFromCenter(ringIdx);
+      const r1 = innerR + pos * ringThickness;
+      const r2 = r1 + ringThickness;
+      const startAngle = weekToAngle(act.startWeek);
+      const endAngle = weekToAngle(act.startWeek + act.lengthWeeks);
+      const path = arcPath(r1, r2, startAngle, endAngle);
+      appendSvg('path', {
+        d: path,
+        fill: ring.color,
+        class: 'wheel-arc',
+        stroke: '#fff',
+        'stroke-width': 1,
+      });
+      appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
+    });
+  } else {
+    // Agenda layout — one thin band per activity, outermost = first activity
+    // of first ring (legend ordering matches band ordering).
+    const ordered = orderedAgendaActivities();
+    const total = ordered.length;
+    const bandThickness = (outerR - innerR) / total;
+
+    // Faint background bands per activity
+    ordered.forEach((entry, i) => {
+      const r2 = outerR - i * bandThickness;
+      const r1 = r2 - bandThickness;
+      appendSvg('path', {
+        d: ringBandPath(r1, r2),
+        fill: '#F4F1EB',
+        stroke: '#8C95A6',
+        'stroke-width': 0.6,
+      });
+    });
+
+    drawMonthDividers(innerR, outerR);
+
+    // Activity arcs — unique color per activity from the activity palette
+    ordered.forEach((entry, i) => {
+      const r2 = outerR - i * bandThickness;
+      const r1 = r2 - bandThickness;
+      const startAngle = weekToAngle(entry.act.startWeek);
+      const endAngle = weekToAngle(entry.act.startWeek + entry.act.lengthWeeks);
+      const path = arcPath(r1, r2, startAngle, endAngle);
+      appendSvg('path', {
+        d: path,
+        fill: activityPaletteColor(i),
+        class: 'wheel-arc',
+        stroke: '#fff',
+        'stroke-width': 0.5,
+      });
+      // Bands too thin for radial text — names live in the legend.
     });
   }
-
-  // Activity arcs (drawn over the month dividers so they cover them)
-  state.activities.forEach(act => {
-    const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
-    if (ringIdx === -1) return;
-    const ring = state.rings[ringIdx];
-    const pos = posFromCenter(ringIdx);
-    const r1 = innerR + pos * ringThickness;
-    const r2 = r1 + ringThickness;
-
-    const startAngle = weekToAngle(act.startWeek);
-    const endAngle = weekToAngle(act.startWeek + act.lengthWeeks);
-
-    const path = arcPath(r1, r2, startAngle, endAngle);
-    appendSvg('path', {
-      d: path,
-      fill: ring.color,
-      class: 'wheel-arc',
-      stroke: '#fff',
-      'stroke-width': 1,
-    });
-
-    // Radial text (reads from inner edge outward, centered in the arc)
-    appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
-  });
 
   // Month labels
   for (let m = 0; m < 12; m++) {
@@ -1313,19 +1437,24 @@ async function exportWheelPDF() {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageW = 297, pageH = 210;
 
-    // Title (compact so wheel can take more vertical room)
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(16);
     doc.setTextColor(26, 35, 50);
     const title = (state.client || t('wheel.centerFallback')).trim();
     doc.text(`${title}  ·  ${state.year}`, pageW / 2, 13, { align: 'center' });
 
-    // Wheel (square, centered, sized to fill page height between title and legend)
-    const imgSize = 180;
-    doc.addImage(dataUrl, 'PNG', (pageW - imgSize) / 2, 17, imgSize, imgSize);
-
-    // Legend at the bottom — wraps if needed
-    drawPdfLegend(doc, pageW, pageH);
+    if (getLayout() === 'agenda') {
+      // Wheel on the right, legend on the left
+      const imgSize = 175;
+      const wheelX = pageW - imgSize - 6;
+      const wheelY = 17;
+      doc.addImage(dataUrl, 'PNG', wheelX, wheelY, imgSize, imgSize);
+      drawPdfLegend(doc, pageW, pageH);
+    } else {
+      const imgSize = 180;
+      doc.addImage(dataUrl, 'PNG', (pageW - imgSize) / 2, 17, imgSize, imgSize);
+      drawPdfLegend(doc, pageW, pageH);
+    }
 
     doc.save(`${exportFilenameStem()}-${safeClientName()}-${state.year}.pdf`);
     toast(t('toast.pdfDownloaded'));
@@ -1336,6 +1465,10 @@ async function exportWheelPDF() {
 }
 
 function drawPdfLegend(doc, pageW, pageH) {
+  if (getLayout() === 'agenda') {
+    drawPdfLegendAgenda(doc, pageW, pageH);
+    return;
+  }
   if (!state.rings.length) return;
   doc.setFontSize(9);
   doc.setTextColor(60, 70, 90);
@@ -1363,6 +1496,45 @@ function drawPdfLegend(doc, pageW, pageH) {
   });
 }
 
+function drawPdfLegendAgenda(doc, pageW, pageH) {
+  const ordered = orderedAgendaActivities();
+  if (!ordered.length) return;
+  const xLeft = 8;
+  const colWidth = 110; // leaves room for 175mm wheel on the right
+  const swatch = 2.6;
+  const headingFs = 8;
+  const itemFs = 8;
+  const lineH = 4.2;
+  const headingTopGap = 2.5;
+  let y = 22;
+
+  let currentRingId = null;
+  ordered.forEach((entry, i) => {
+    const ringId = entry.ring ? entry.ring.id : '__orphan__';
+    if (ringId !== currentRingId) {
+      currentRingId = ringId;
+      if (i > 0) y += headingTopGap;
+      doc.setFontSize(headingFs);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(26, 35, 50);
+      const ringName = entry.ring ? entry.ring.name : '—';
+      doc.text(ringName.toUpperCase(), xLeft, y);
+      y += lineH;
+    }
+    if (y > pageH - 8) return; // out of room
+    doc.setFontSize(itemFs);
+    doc.setFont('helvetica', 'normal');
+    const rgb = hexToRgb(activityPaletteColor(i));
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
+    doc.setTextColor(60, 70, 90);
+    const label = `${i + 1}. ${entry.act.name}`;
+    const truncated = doc.splitTextToSize(label, colWidth - swatch - 4)[0] || label;
+    doc.text(truncated, xLeft + swatch + 2, y);
+    y += lineH;
+  });
+}
+
 async function exportWheelPPT() {
   if (typeof PptxGenJS === 'undefined') {
     toast(t('toast.pptLoading'));
@@ -1384,17 +1556,24 @@ async function exportWheelPPT() {
       align: 'center', valign: 'middle', bold: false,
     });
 
-    // Wheel image — centered square, sized to consume available height
-    // (slideH - title - legend strip)
-    const imgSize = 6.45;
-    slide.addImage({
-      data: dataUrl,
-      x: (slideW - imgSize) / 2, y: 0.65,
-      w: imgSize, h: imgSize,
-    });
-
-    // Legend row at bottom
-    addPptLegend(slide, slideW, slideH);
+    if (getLayout() === 'agenda') {
+      // Wheel on the right, legend on the left
+      const imgSize = 6.45;
+      slide.addImage({
+        data: dataUrl,
+        x: slideW - imgSize - 0.25, y: 0.65,
+        w: imgSize, h: imgSize,
+      });
+      addPptLegendAgenda(slide, slideW, slideH);
+    } else {
+      const imgSize = 6.45;
+      slide.addImage({
+        data: dataUrl,
+        x: (slideW - imgSize) / 2, y: 0.65,
+        w: imgSize, h: imgSize,
+      });
+      addPptLegend(slide, slideW, slideH);
+    }
 
     await pres.writeFile({ fileName: `${exportFilenameStem()}-${safeClientName()}-${state.year}.pptx` });
     toast(t('toast.pptDownloaded'));
@@ -1432,6 +1611,47 @@ function addPptLegend(slide, slideW, slideH) {
       valign: 'middle',
     });
     x += itemW;
+  });
+}
+
+function addPptLegendAgenda(slide, slideW, slideH) {
+  const ordered = orderedAgendaActivities();
+  if (!ordered.length) return;
+  const xLeft = 0.3;
+  const colWidth = 6.0; // wheel takes 6.45 + 0.25 = 6.7 on the right
+  const swatch = 0.12;
+  const headingFs = 9;
+  const itemFs = 9;
+  const lineH = 0.22;
+  const headingTopGap = 0.1;
+  let y = 0.7;
+
+  let currentRingId = null;
+  ordered.forEach((entry, i) => {
+    const ringId = entry.ring ? entry.ring.id : '__orphan__';
+    if (ringId !== currentRingId) {
+      currentRingId = ringId;
+      if (i > 0) y += headingTopGap;
+      const ringName = entry.ring ? entry.ring.name : '—';
+      slide.addText(ringName.toUpperCase(), {
+        x: xLeft, y, w: colWidth, h: lineH,
+        fontSize: headingFs, fontFace: 'Calibri', color: '1A2332',
+        bold: true, valign: 'middle',
+      });
+      y += lineH;
+    }
+    if (y > slideH - lineH) return; // out of room
+    slide.addShape('rect', {
+      x: xLeft, y: y + (lineH - swatch) / 2, w: swatch, h: swatch,
+      fill: { color: activityPaletteColor(i).replace('#', '') },
+      line: { color: activityPaletteColor(i).replace('#', ''), width: 0 },
+    });
+    slide.addText(`${i + 1}. ${entry.act.name}`, {
+      x: xLeft + swatch + 0.08, y, w: colWidth - swatch - 0.1, h: lineH,
+      fontSize: itemFs, fontFace: 'Calibri', color: '3C465A',
+      valign: 'middle',
+    });
+    y += lineH;
   });
 }
 
@@ -2121,6 +2341,7 @@ async function loadUserWheel(userId) {
   }
   clientNameInput.value = state.client || '';
   clientYearInput.value = state.year || new Date().getFullYear();
+  refreshLayoutToggle();
   renderAll();
   saveState();
 }
@@ -2151,6 +2372,7 @@ async function handleFileUpload(e) {
     state = loaded;
     clientNameInput.value = state.client || '';
     clientYearInput.value = state.year || new Date().getFullYear();
+    refreshLayoutToggle();
     saveState();
     renderAll();
     toast(t('toast.wheelLoaded'));

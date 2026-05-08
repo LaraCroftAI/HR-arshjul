@@ -418,6 +418,30 @@ h1, h2, h3 {
   border-radius: 3px;
 }
 
+/* Agenda-layout legend: grouped per ring with headings; left-aligned list */
+.legend-agenda {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 24px;
+  justify-content: start;
+  align-items: start;
+  text-align: left;
+}
+.legend-agenda .legend-heading {
+  grid-column: 1 / -1;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.legend-agenda .legend-heading:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.legend-agenda .legend-item { font-size: 12px; }
+.legend-agenda .legend-num { color: var(--ink-faint); min-width: 22px; }
+
 /* ---------- Admin modal ---------- */
 .modal-backdrop {
   position: fixed;
