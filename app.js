@@ -676,7 +676,22 @@ function renderWheel() {
     });
   });
 
-  // Activity arcs
+  // Month dividers — drawn BEFORE activities so an activity arc that crosses
+  // a month boundary covers the line underneath it.
+  for (let m = 0; m < 12; m++) {
+    const angle = (m / 12) * Math.PI * 2 - Math.PI / 2;
+    const x1 = innerR * Math.cos(angle);
+    const y1 = innerR * Math.sin(angle);
+    const x2 = outerR * Math.cos(angle);
+    const y2 = outerR * Math.sin(angle);
+    appendSvg('line', {
+      x1, y1, x2, y2,
+      stroke: '#1A2332',
+      'stroke-width': 0.8,
+    });
+  }
+
+  // Activity arcs (drawn over the month dividers so they cover them)
   state.activities.forEach(act => {
     const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
     if (ringIdx === -1) return;
@@ -700,20 +715,6 @@ function renderWheel() {
     // Radial text (reads from inner edge outward, centered in the arc)
     appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
   });
-
-  // Month dividers (lines at each month boundary)
-  for (let m = 0; m < 12; m++) {
-    const angle = (m / 12) * Math.PI * 2 - Math.PI / 2;
-    const x1 = innerR * Math.cos(angle);
-    const y1 = innerR * Math.sin(angle);
-    const x2 = outerR * Math.cos(angle);
-    const y2 = outerR * Math.sin(angle);
-    appendSvg('line', {
-      x1, y1, x2, y2,
-      stroke: 'rgba(255,255,255,0.7)',
-      'stroke-width': 0.8,
-    });
-  }
 
   // Month labels
   for (let m = 0; m < 12; m++) {
