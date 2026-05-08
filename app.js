@@ -372,6 +372,7 @@ function setLanguage(lang) {
   });
   if (typeof renderAll === 'function') renderAll();
   if (typeof setAuthMode === 'function') setAuthMode(authMode);
+  if (typeof refreshLayoutToggle === 'function') refreshLayoutToggle();
 }
 
 // ---------- State ----------
@@ -511,14 +512,31 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
   btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
   btn.classList.toggle('active', btn.dataset.lang === currentLang);
 });
-// Layout toggle — wire up .layout-btn elements
-document.querySelectorAll('.layout-btn').forEach(btn => {
-  btn.addEventListener('click', () => setLayout(btn.dataset.layout));
-});
+// Layout dropdown — same UX pattern as the export ("Ladda ner") dropdown
+(function setupLayoutDropdown() {
+  const btn = $('layoutBtn');
+  const menu = $('layoutMenu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+  menu.querySelectorAll('.layout-option').forEach(item => {
+    item.addEventListener('click', () => {
+      menu.hidden = true;
+      setLayout(item.dataset.layout);
+    });
+  });
+})();
 function refreshLayoutToggle() {
   const cur = getLayout();
-  document.querySelectorAll('.layout-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.layout === cur);
+  const label = document.querySelector('#layoutBtn .layout-current');
+  if (label) label.textContent = t(cur === 'agenda' ? 'layout.agenda' : 'layout.wheel');
+  document.querySelectorAll('.layout-option').forEach(b => {
+    b.classList.toggle('is-current', b.dataset.layout === cur);
   });
 }
 function setLayout(layout) {

@@ -655,28 +655,34 @@ h1, h2, h3 {
 /* ---------- Language toggle ---------- */
 .lang-toggle {
   display: inline-flex;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   overflow: hidden;
-  background: var(--surface-soft);
+  background: var(--surface);
+  flex-shrink: 0;
 }
 .lang-toggle .lang-btn {
   border: 0;
   background: transparent;
-  padding: 5px 12px;
-  font-size: 12px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.lang-toggle .lang-btn:hover { background: rgba(20, 26, 40, 0.06); }
+.lang-toggle .lang-btn:hover { background: var(--surface-soft); }
 .lang-toggle .lang-btn.active {
   background: var(--ink);
   color: #fff;
 }
 .lang-toggle .lang-btn.active:hover { background: #2A3445; }
+
+.dropdown-item.is-current {
+  background: var(--surface-soft);
+  font-weight: 600;
+}
 .auth-card .lang-toggle {
   margin: 24px auto 0;
   display: flex;

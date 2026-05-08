@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=36" />
+  <link rel="stylesheet" href="style.css?v=37" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -78,9 +78,12 @@
             <button class="dropdown-item" data-format="ppt" data-i18n="topbar.exportPpt">Som PowerPoint</button>
           </div>
         </div>
-        <div class="lang-toggle lang-toggle-topbar" role="group" data-i18n-aria-label="layout.toggleAria" aria-label="Välj vy">
-          <button type="button" class="lang-btn layout-btn" data-layout="wheel" data-i18n="layout.wheel">Klassisk</button>
-          <button type="button" class="lang-btn layout-btn" data-layout="agenda" data-i18n="layout.agenda">Agenda</button>
+        <div class="dropdown">
+          <button id="layoutBtn" type="button" class="btn btn-ghost btn-small" data-i18n-aria-label="layout.toggleAria" aria-label="Välj vy"><span class="layout-current">Klassisk</span> ▾</button>
+          <div id="layoutMenu" class="dropdown-menu" hidden>
+            <button type="button" class="dropdown-item layout-option" data-layout="wheel" data-i18n="layout.wheel">Klassisk</button>
+            <button type="button" class="dropdown-item layout-option" data-layout="agenda" data-i18n="layout.agenda">Agenda</button>
+          </div>
         </div>
         <div class="lang-toggle lang-toggle-topbar" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
           <button type="button" class="lang-btn" data-lang="sv">SV</button>
@@ -155,6 +158,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=36" defer></script>
+  <script src="app.js?v=37" defer></script>
 </body>
 </html>
