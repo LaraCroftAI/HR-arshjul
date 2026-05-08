@@ -1288,16 +1288,16 @@ async function exportWheelPDF() {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageW = 297, pageH = 210;
 
-    // Title
+    // Title (compact so wheel can take more vertical room)
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(20);
+    doc.setFontSize(16);
     doc.setTextColor(26, 35, 50);
     const title = (state.client || t('wheel.centerFallback')).trim();
-    doc.text(`${title}  ·  ${state.year}`, pageW / 2, 18, { align: 'center' });
+    doc.text(`${title}  ·  ${state.year}`, pageW / 2, 13, { align: 'center' });
 
-    // Wheel (square, centered)
-    const imgSize = 165;
-    doc.addImage(dataUrl, 'PNG', (pageW - imgSize) / 2, 26, imgSize, imgSize);
+    // Wheel (square, centered, sized to fill page height between title and legend)
+    const imgSize = 180;
+    doc.addImage(dataUrl, 'PNG', (pageW - imgSize) / 2, 17, imgSize, imgSize);
 
     // Legend at the bottom — wraps if needed
     drawPdfLegend(doc, pageW, pageH);
@@ -1312,14 +1312,14 @@ async function exportWheelPDF() {
 
 function drawPdfLegend(doc, pageW, pageH) {
   if (!state.rings.length) return;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(60, 70, 90);
-  const margin = 18;
-  const swatch = 3.6;
-  const gap = 3;
-  const itemGap = 8;
-  const rowHeight = 6.5;
-  let y = pageH - 12;
+  const margin = 14;
+  const swatch = 3;
+  const gap = 2.5;
+  const itemGap = 6;
+  const rowHeight = 5;
+  let y = pageH - 6;
   let x = margin;
   state.rings.forEach(ring => {
     const label = ring.name || 'Ring';
@@ -1352,18 +1352,19 @@ async function exportWheelPPT() {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
 
-    // Title
+    // Title (compact so wheel can take more vertical room)
     slide.addText(`${(state.client || t('wheel.centerFallback')).trim()}  ·  ${state.year}`, {
-      x: 0.5, y: 0.3, w: slideW - 1, h: 0.6,
-      fontSize: 24, fontFace: 'Calibri', color: '1A2332',
+      x: 0.5, y: 0.15, w: slideW - 1, h: 0.45,
+      fontSize: 20, fontFace: 'Calibri', color: '1A2332',
       align: 'center', valign: 'middle', bold: false,
     });
 
-    // Wheel image (centered, square)
-    const imgSize = 5.8;
+    // Wheel image — centered square, sized to consume available height
+    // (slideH - title - legend strip)
+    const imgSize = 6.45;
     slide.addImage({
       data: dataUrl,
-      x: (slideW - imgSize) / 2, y: 1.0,
+      x: (slideW - imgSize) / 2, y: 0.65,
       w: imgSize, h: imgSize,
     });
 
@@ -1380,14 +1381,14 @@ async function exportWheelPPT() {
 
 function addPptLegend(slide, slideW, slideH) {
   if (!state.rings.length) return;
-  const swatch = 0.16;
-  const gap = 0.12;
-  const itemGap = 0.4;
-  const fontSize = 11;
-  const charWidthApprox = 0.075;
+  const swatch = 0.13;
+  const gap = 0.1;
+  const itemGap = 0.32;
+  const fontSize = 10;
+  const charWidthApprox = 0.07;
   const margin = 0.5;
-  const rowHeight = 0.32;
-  let y = slideH - 0.6;
+  const rowHeight = 0.24;
+  let y = slideH - 0.28;
   let x = margin;
   state.rings.forEach(ring => {
     const label = ring.name || 'Ring';
