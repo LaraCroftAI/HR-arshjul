@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=42" />
+  <link rel="stylesheet" href="style.css?v=43" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -68,6 +68,10 @@
         </label>
       </div>
       <div class="topbar-actions">
+        <div class="dropdown">
+          <button id="wheelsBtn" type="button" class="btn btn-ghost btn-small" data-i18n-aria-label="wheels.toggleAria" aria-label="Mina hjul"><span data-i18n="wheels.label">Hjul</span>: <span class="wheels-current"></span> ▾</button>
+          <div id="wheelsMenu" class="dropdown-menu" hidden></div>
+        </div>
         <button id="newBtn" class="btn btn-ghost btn-small" data-i18n="topbar.newWheel">Nytt hjul</button>
         <button id="uploadBtn" class="btn btn-ghost btn-small" data-i18n="topbar.uploadImage">Ladda upp bild</button>
         <div class="dropdown">
@@ -159,6 +163,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=42" defer></script>
+  <script src="app.js?v=43" defer></script>
 </body>
 </html>

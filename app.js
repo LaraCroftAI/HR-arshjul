@@ -186,6 +186,12 @@ const I18N = {
     'layout.label': 'Layout',
     'layout.wheel': 'Klassisk',
     'layout.agenda': 'Agenda',
+    'wheels.label': 'Hjul',
+    'wheels.toggleAria': 'Mina hjul',
+    'wheels.new': '+ Nytt hjul',
+    'wheels.untitled': 'Namnlöst hjul',
+    'wheels.deleteTitle': 'Ta bort detta hjul',
+    'confirm.deleteWheel': 'Ta bort hjulet "{name}"? Det går inte att ångra.',
   },
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -332,6 +338,12 @@ const I18N = {
     'layout.label': 'Layout',
     'layout.wheel': 'Classic',
     'layout.agenda': 'Agenda',
+    'wheels.label': 'Wheel',
+    'wheels.toggleAria': 'My wheels',
+    'wheels.new': '+ New wheel',
+    'wheels.untitled': 'Untitled wheel',
+    'wheels.deleteTitle': 'Delete this wheel',
+    'confirm.deleteWheel': 'Delete wheel "{name}"? This can\'t be undone.',
   },
 };
 
@@ -424,8 +436,11 @@ function rid() {
 }
 
 // Wheel persistence — local-first, sync to Supabase when possible.
-// Local save is instant and works offline; remote sync runs in background.
+// Each wheel has its own UUID (currentWheelId); a user can have many wheels.
 let saveTimer = null;
+let wheels = []; // [{id, data}] for the current user
+let currentWheelId = null;
+
 function saveState() {
   saveLocal();          // immediate, reliable
   clearTimeout(saveTimer);
@@ -433,14 +448,19 @@ function saveState() {
 }
 
 function localKey() {
-  return STORAGE_KEY + ':' + (currentUser ? currentUser.id : 'anon');
+  // Per-wheel local cache
+  return STORAGE_KEY + ':wheel:' + (currentWheelId || 'anon');
+}
+function localKeyCurrent() {
+  return STORAGE_KEY + ':current:' + (currentUser ? currentUser.id : 'anon');
 }
 function saveLocal() {
+  if (!currentWheelId) return;
   try { localStorage.setItem(localKey(), JSON.stringify(state)); } catch {}
 }
-function loadLocal() {
+function loadLocalForId(id) {
   try {
-    const raw = localStorage.getItem(localKey());
+    const raw = localStorage.getItem(STORAGE_KEY + ':wheel:' + id);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.rings)) return parsed;
@@ -449,7 +469,7 @@ function loadLocal() {
 }
 
 async function saveToSupabase() {
-  if (!sb || !currentUser) return;
+  if (!sb || !currentUser || !currentWheelId) return;
   // Fall back to native fetch with timeout — supabase-js was hanging silently for some setups.
   try {
     const sessRes = await sb.auth.getSession();
@@ -457,7 +477,7 @@ async function saveToSupabase() {
     if (!token) return;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?on_conflict=user_id', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?on_conflict=id', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -465,7 +485,7 @@ async function saveToSupabase() {
         Authorization: 'Bearer ' + token,
         Prefer: 'resolution=merge-duplicates',
       },
-      body: JSON.stringify({ user_id: currentUser.id, data: state }),
+      body: JSON.stringify({ id: currentWheelId, user_id: currentUser.id, data: state }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);
@@ -488,8 +508,8 @@ const clientYearInput = $('clientYear');
 clientNameInput.value = state.client || '';
 clientYearInput.value = state.year || new Date().getFullYear();
 
-clientNameInput.addEventListener('input', () => { state.client = clientNameInput.value; saveState(); renderWheel(); });
-clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.value || new Date().getFullYear(); saveState(); renderWheel(); });
+clientNameInput.addEventListener('input', () => { state.client = clientNameInput.value; saveState(); renderWheel(); refreshWheelsList(); });
+clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.value || new Date().getFullYear(); saveState(); renderWheel(); refreshWheelsList(); });
 
 $('addRingBtn').addEventListener('click', addRing);
 $('addActivityBtn').addEventListener('click', addActivity);
@@ -501,17 +521,7 @@ $('downloadTemplateLink').addEventListener('click', e => {
 });
 setupRingDragAndDrop();
 $('newBtn').addEventListener('click', () => {
-  if (!confirm(t('confirm.newWheel'))) return;
-  const prevLayout = getLayout();
-  state = defaultState();
-  state.rings = [];
-  state.activities = [];
-  state.client = '';
-  state.year = new Date().getFullYear();
-  state.layout = prevLayout;
-  clientNameInput.value = '';
-  clientYearInput.value = state.year;
-  saveState(); renderAll();
+  createNewWheel();
 });
 $('uploadBtn').addEventListener('click', () => $('fileInput').click());
 $('fileInput').addEventListener('change', handleFileUpload);
@@ -522,6 +532,21 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
   btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
   btn.classList.toggle('active', btn.dataset.lang === currentLang);
 });
+// Wheels dropdown — list/switch/create/delete wheels
+(function setupWheelsDropdown() {
+  const btn = $('wheelsBtn');
+  const menu = $('wheelsMenu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    refreshWheelsList();
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+})();
+
 // Layout dropdown — same UX pattern as the export ("Ladda ner") dropdown
 (function setupLayoutDropdown() {
   const btn = $('layoutBtn');
@@ -2378,6 +2403,8 @@ window.addEventListener('focus', () => {
 
 function onSignedOut() {
   currentUser = null;
+  wheels = [];
+  currentWheelId = null;
   state = defaultState();
   isAdmin = false;
   $('adminBtn').hidden = true;
@@ -2417,60 +2444,225 @@ function showAuthMessage(text, isError) {
   el.classList.toggle('is-error', !!isError);
 }
 
+function newWheelId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  // RFC 4122 v4 fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+function defaultWheelState() {
+  const s = defaultState();
+  // Link default activities to their rings (same logic as the IIFE for the
+  // initial module-load state).
+  if (s.activities.length && s.activities[0].ringId === null && s.rings.length >= 3) {
+    s.activities[0].ringId = s.rings[1].id;
+    s.activities[1].ringId = s.rings[2].id;
+    s.activities[2].ringId = s.rings[0].id;
+    s.activities[3].ringId = s.rings[0].id;
+    s.activities[4].ringId = s.rings[1].id;
+  }
+  return s;
+}
+
 async function loadUserWheel(userId) {
-  // Local-first: a local cache always wins because remote sync may be unreliable
-  // in this user's network. Cross-device sync is a future concern.
-  const local = loadLocal();
-  if (local) {
-    state = local;
-    clientNameInput.value = state.client || '';
-    clientYearInput.value = state.year || new Date().getFullYear();
-    renderAll();
-    return; // skip remote — local is authoritative
+  // Build the user's list of wheels: prefer Supabase but fall back to
+  // localStorage caches (in case the network is unreliable).
+  const remoteList = await fetchRemoteWheels(userId);
+  const localList = collectLocalWheels();
+
+  // Merge: remote ids win, plus any local-only wheels (created offline).
+  const byId = new Map();
+  if (remoteList) {
+    for (const r of remoteList) {
+      const data = r.data && Array.isArray(r.data.rings) ? r.data : null;
+      if (data) byId.set(r.id, { id: r.id, data, updated_at: r.updated_at });
+    }
+    // Refresh local cache
+    for (const r of remoteList) {
+      try { localStorage.setItem(STORAGE_KEY + ':wheel:' + r.id, JSON.stringify(r.data)); } catch {}
+    }
+  }
+  for (const l of localList) {
+    if (!byId.has(l.id)) byId.set(l.id, l);
+  }
+  wheels = Array.from(byId.values());
+
+  if (wheels.length === 0) {
+    // Brand new user — create the first wheel from defaults
+    const id = newWheelId();
+    wheels.push({ id, data: defaultWheelState() });
   }
 
-  // No local cache — try Supabase as a starting point.
-  let remote = null;
+  // Pick which wheel to show: previously-active for this user, or first
+  let target = null;
+  try {
+    const saved = localStorage.getItem(localKeyCurrent());
+    if (saved && wheels.some(w => w.id === saved)) target = saved;
+  } catch {}
+  if (!target) target = wheels[0].id;
+
+  await switchToWheel(target, { skipPersist: false });
+}
+
+async function fetchRemoteWheels(userId) {
+  if (!sb) return null;
   try {
     const sessRes = await sb.auth.getSession();
     const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
-    if (!token) throw new Error('no token');
+    if (!token) return null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?select=data,updated_at&user_id=eq.' + encodeURIComponent(userId), {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?select=id,data,updated_at&user_id=eq.' + encodeURIComponent(userId) + '&order=created_at.asc', {
       headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
       signal: ctrl.signal,
     });
     clearTimeout(timer);
-    if (res.ok) {
-      const rows = await res.json();
-      if (rows && rows.length && rows[0].data && Array.isArray(rows[0].data.rings)) {
-        remote = rows[0].data;
-      }
-    }
+    if (res.ok) return await res.json();
   } catch (err) {
-    console.warn('Wheel load failed (använder defaults):', err.message || err);
+    console.warn('Wheels list fetch failed:', err.message || err);
   }
+  return null;
+}
 
-  if (remote) {
-    state = remote;
-    saveLocal(); // seed the local cache with remote so we have it next time
-  } else {
-    // No remote, no local — fresh user, build defaults.
-    state = defaultState();
-    if (state.activities.length && state.activities[0].ringId === null) {
-      state.activities[0].ringId = state.rings[1].id;
-      state.activities[1].ringId = state.rings[2].id;
-      state.activities[2].ringId = state.rings[0].id;
-      state.activities[3].ringId = state.rings[0].id;
-      state.activities[4].ringId = state.rings[1].id;
-    }
+function collectLocalWheels() {
+  const out = [];
+  const prefix = STORAGE_KEY + ':wheel:';
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(prefix)) continue;
+    const id = k.slice(prefix.length);
+    try {
+      const data = JSON.parse(localStorage.getItem(k));
+      if (data && Array.isArray(data.rings)) out.push({ id, data });
+    } catch {}
+  }
+  return out;
+}
+
+async function switchToWheel(id, opts) {
+  const w = wheels.find(x => x.id === id);
+  if (!w) return;
+  currentWheelId = id;
+  state = w.data;
+  if (!(opts && opts.skipPersist)) {
+    try { localStorage.setItem(localKeyCurrent(), id); } catch {}
   }
   clientNameInput.value = state.client || '';
   clientYearInput.value = state.year || new Date().getFullYear();
   refreshLayoutToggle();
+  refreshWheelsList();
   renderAll();
-  saveState();
+  saveLocal();
+}
+
+function createNewWheel() {
+  const id = newWheelId();
+  const data = defaultState();
+  data.layout = getLayout();
+  // Empty wheel (no defaults) so user starts from a blank slate
+  data.rings = [];
+  data.activities = [];
+  data.client = '';
+  data.year = new Date().getFullYear();
+  wheels.push({ id, data });
+  switchToWheel(id);
+  saveState(); // persist new wheel to Supabase
+}
+
+async function deleteWheel(id) {
+  const idx = wheels.findIndex(w => w.id === id);
+  if (idx === -1) return;
+  wheels.splice(idx, 1);
+  // Drop the local cache for that wheel
+  try { localStorage.removeItem(STORAGE_KEY + ':wheel:' + id); } catch {}
+  // If we deleted the current one, switch to the first remaining
+  if (id === currentWheelId) {
+    if (wheels.length === 0) {
+      createNewWheel();
+    } else {
+      await switchToWheel(wheels[0].id);
+    }
+  } else {
+    refreshWheelsList();
+  }
+  // Remove from Supabase (best effort)
+  try {
+    const sessRes = await sb.auth.getSession();
+    const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+    if (!token) return;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    await fetch(SUPABASE_URL + '/rest/v1/wheels?id=eq.' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+  } catch (err) {
+    console.warn('Delete wheel failed (lokal kopia är borttagen):', err.message || err);
+  }
+}
+
+function wheelDisplayName(w) {
+  const c = (w.data && w.data.client || '').trim();
+  const y = w.data && w.data.year;
+  if (c && y) return `${c} · ${y}`;
+  if (c) return c;
+  if (y) return `${t('wheels.untitled')} · ${y}`;
+  return t('wheels.untitled');
+}
+
+function refreshWheelsList() {
+  const menu = $('wheelsMenu');
+  const label = document.querySelector('#wheelsBtn .wheels-current');
+  if (label) {
+    const w = wheels.find(x => x.id === currentWheelId);
+    label.textContent = w ? wheelDisplayName(w) : t('wheels.untitled');
+  }
+  if (!menu) return;
+  menu.innerHTML = '';
+  wheels.forEach(w => {
+    const row = document.createElement('div');
+    row.className = 'dropdown-item wheel-row';
+    if (w.id === currentWheelId) row.classList.add('is-current');
+    const switchBtn = document.createElement('button');
+    switchBtn.type = 'button';
+    switchBtn.className = 'wheel-switch';
+    switchBtn.textContent = wheelDisplayName(w);
+    switchBtn.addEventListener('click', () => {
+      $('wheelsMenu').hidden = true;
+      switchToWheel(w.id);
+    });
+    row.appendChild(switchBtn);
+    if (wheels.length > 1) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'wheel-delete';
+      del.title = t('wheels.deleteTitle');
+      del.setAttribute('aria-label', t('wheels.deleteTitle'));
+      del.textContent = '✕';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!confirm(t('confirm.deleteWheel', { name: wheelDisplayName(w) }))) return;
+        $('wheelsMenu').hidden = true;
+        deleteWheel(w.id);
+      });
+      row.appendChild(del);
+    }
+    menu.appendChild(row);
+  });
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.className = 'dropdown-item dropdown-item-action';
+  newBtn.textContent = t('wheels.new');
+  newBtn.addEventListener('click', () => {
+    $('wheelsMenu').hidden = true;
+    createNewWheel();
+  });
+  menu.appendChild(newBtn);
 }
 
 // ---------- Upload PNG and restore project ----------
@@ -2496,12 +2688,12 @@ async function handleFileUpload(e) {
       toast(t('toast.corruptData'));
       return;
     }
-    state = loaded;
-    clientNameInput.value = state.client || '';
-    clientYearInput.value = state.year || new Date().getFullYear();
-    refreshLayoutToggle();
+    // PNG upload creates a NEW wheel rather than overwriting the current one,
+    // so an accidental upload can't wipe an in-progress wheel.
+    const id = newWheelId();
+    wheels.push({ id, data: loaded });
+    await switchToWheel(id);
     saveState();
-    renderAll();
     toast(t('toast.wheelLoaded'));
   } catch (err) {
     console.error(err);
