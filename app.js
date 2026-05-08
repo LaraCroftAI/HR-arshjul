@@ -21,7 +21,329 @@ const RING_PALETTE = [
   '#A89F8E', // sten
 ];
 
-const MONTHS_SV = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+// ---------- i18n ----------
+const I18N = {
+  sv: {
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'],
+    'auth.signin.title': 'Logga in',
+    'auth.signin.sub': 'Logga in med din e-post och ditt lösenord.',
+    'auth.signin.submit': 'Logga in',
+    'auth.signin.signing': 'Loggar in...',
+    'auth.signin.toggleText': 'Inget konto än?',
+    'auth.signin.toggleLink': 'Skapa konto',
+    'auth.signup.title': 'Skapa konto',
+    'auth.signup.sub': 'Välj ett lösenord (minst 6 tecken). Du behåller samma e-post och lösenord för att logga in nästa gång.',
+    'auth.signup.submit': 'Skapa konto',
+    'auth.signup.signingUp': 'Skapar konto...',
+    'auth.signup.toggleText': 'Har du redan ett konto?',
+    'auth.signup.toggleLink': 'Logga in',
+    'auth.signup.confirmEmail': 'Konto skapat. Vi har skickat ett bekräftelsemejl till {email} — klicka på länken där och kom sedan tillbaka och logga in.',
+    'auth.reset.title': 'Glömt lösenord',
+    'auth.reset.sub': 'Skriv in din e-postadress så skickar vi en länk för att välja ett nytt lösenord.',
+    'auth.reset.submit': 'Skicka återställningslänk',
+    'auth.reset.sending': 'Skickar...',
+    'auth.reset.sent': 'Vi har skickat en återställningslänk till {email}. Klicka på länken i mejlet för att välja ett nytt lösenord. Om du inte ser mejlet, kolla skräpposten.',
+    'auth.newpw.title': 'Välj nytt lösenord',
+    'auth.newpw.sub': 'Skriv in det nya lösenordet (minst 6 tecken). Du loggas in automatiskt när det är sparat.',
+    'auth.newpw.submit': 'Spara nytt lösenord',
+    'auth.newpw.saving': 'Sparar...',
+    'auth.newpw.updated': 'Lösenordet är uppdaterat. Logga in med det nya lösenordet.',
+    'auth.forgotLink': 'Glömt lösenord?',
+    'auth.backLink': '← Tillbaka till inloggning',
+    'auth.emailPh': 'namn@exempel.se',
+    'auth.passwordPh': 'Lösenord (minst 6 tecken)',
+    'auth.passwordPhNew': 'Nytt lösenord (minst 6 tecken)',
+    'auth.unavailable': 'Inloggningstjänsten kunde inte laddas. Kontrollera nätet och ladda om sidan.',
+    'auth.sessionFailed': 'Inloggning gick igenom men sessionen kunde inte startas. Ladda om sidan och försök igen.',
+    'auth.err.notInvited': 'Den här e-postadressen har inte tillgång till verktyget. Be administratören att lägga till dig.',
+    'auth.err.invalidCreds': 'Fel e-post eller lösenord.',
+    'auth.err.notConfirmed': 'Du måste bekräfta din e-post först. Kolla inkorgen (och skräpposten).',
+    'auth.err.alreadyExists': 'Det här kontot finns redan. Tryck på "Logga in" istället.',
+    'auth.err.tooShort': 'Lösenordet är för kort — minst 6 tecken.',
+    'auth.err.rateLimit': 'För många försök. Vänta en stund och försök igen.',
+    'auth.err.weakPwd': 'Lösenordet är för svagt — välj ett längre eller mer komplext.',
+    'auth.err.generic': 'Något gick fel. Försök igen.',
+    'topbar.client': 'Kund',
+    'topbar.year': 'År',
+    'topbar.clientPh': 't.ex. Acme AB',
+    'topbar.newWheel': 'Nytt hjul',
+    'topbar.uploadImage': 'Ladda upp bild',
+    'topbar.export': 'Ladda ner ▾',
+    'topbar.exportPng': 'Som bild (PNG)',
+    'topbar.exportPdf': 'Som PDF',
+    'topbar.exportPpt': 'Som PowerPoint',
+    'topbar.adminLink': 'Hantera användare',
+    'topbar.logout': 'Logga ut',
+    'panel.rings.title': 'Ringar',
+    'panel.rings.add': '+ Lägg till ring',
+    'panel.rings.hint': 'Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön & förmåner.',
+    'panel.rings.empty': 'Inga ringar än. Klicka "+ Lägg till ring" för att börja.',
+    'panel.rings.namePh': 'Ringens namn',
+    'panel.rings.dragHandle': 'Dra för att ändra ordning',
+    'panel.rings.colorAria': 'Välj färg',
+    'panel.rings.removeTitle': 'Ta bort',
+    'panel.activities.title': 'Aktiviteter',
+    'panel.activities.import': 'Importera',
+    'panel.activities.add': '+ Lägg till',
+    'panel.activities.hintBefore': 'Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? ',
+    'panel.activities.hintLink': 'Hämta mallen',
+    'panel.activities.hintAfter': '.',
+    'panel.activities.empty': 'Inga aktiviteter än. Klicka "+ Lägg till aktivitet".',
+    'panel.activities.emptyNoRing': 'Lägg till en ring först — aktiviteter tillhör en ring.',
+    'panel.activities.namePh': 'Aktivitetens namn',
+    'panel.activities.ring': 'Ring',
+    'panel.activities.startWeek': 'Startvecka',
+    'panel.activities.length': 'Längd v.',
+    'wheel.aria': 'HR årshjul',
+    'wheel.centerFallback': 'Årshjul',
+    'wheel.emptyHint': 'Lägg till en ring för att börja',
+    'confirm.newWheel': 'Börja om med ett tomt årshjul? Nuvarande hjul försvinner.',
+    'confirm.removeRing': 'Ta bort ringen och alla aktiviteter i den?',
+    'confirm.removeEmail': 'Ta bort {email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.',
+    'toast.imageDownloaded': 'Bilden är nedladdad',
+    'toast.imageFailed': 'Kunde inte spara bilden',
+    'toast.pdfDownloaded': 'PDF nedladdad',
+    'toast.pdfFailed': 'Kunde inte skapa PDF',
+    'toast.pptDownloaded': 'PowerPoint nedladdad',
+    'toast.pptFailed': 'Kunde inte skapa PowerPoint',
+    'toast.pdfLoading': 'PDF-biblioteket laddar fortfarande — försök igen om en stund',
+    'toast.pptLoading': 'PowerPoint-biblioteket laddar fortfarande — försök igen om en stund',
+    'toast.importLoading': 'Importbiblioteket laddar — försök igen om en stund',
+    'toast.templateLoading': 'Mall-biblioteket laddar — försök igen om en stund',
+    'toast.fileEmpty': 'Filen verkar tom',
+    'toast.noRows': 'Hittade inga rader att importera',
+    'toast.missingColumns': 'Filen saknar kolumn för Aktivitet eller Startvecka',
+    'toast.noValidRows': 'Inga giltiga rader hittades — kontrollera mallen',
+    'toast.importedActs': '{n} aktiviteter importerade',
+    'toast.importedRings': '{n} nya ringar',
+    'toast.importedSkipped': '{n} hoppades över',
+    'toast.fileError': 'Kunde inte läsa filen — är det en xlsx eller csv?',
+    'toast.templateDownloaded': 'Mall nedladdad',
+    'toast.invalidPng': 'Filen är inte en giltig PNG-bild',
+    'toast.noProjectData': 'Bilden saknar projektdata — välj en bild som laddats ner från appen',
+    'toast.corruptData': 'Projektdatan i bilden är skadad',
+    'toast.fileLoadError': 'Kunde inte läsa filen',
+    'toast.wheelLoaded': 'Hjulet är inläst — du kan fortsätta redigera',
+    'toast.wheelLoadFailed': 'Hjulet kunde inte laddas — försök ladda om sidan',
+    'activity.weekShort': 'v.',
+    'default.ring.workEnv': 'Arbetsmiljö',
+    'default.ring.development': 'Utveckling',
+    'default.ring.compensation': 'Lön & förmåner',
+    'default.activity.review': 'Utvecklingssamtal',
+    'default.activity.salaryReview': 'Lönerevision',
+    'default.activity.workplaceInsp': 'Arbetsmiljörond',
+    'default.activity.summerParty': 'Sommarfest',
+    'default.activity.succession': 'Successionsplan',
+    'default.ring.new': 'Ny ring',
+    'default.activity.new': 'Ny aktivitet',
+    'default.ring.general': 'Allmänt',
+    'template.headerActivity': 'Aktivitet',
+    'template.headerRing': 'Ring',
+    'template.headerStartWeek': 'Startvecka',
+    'template.headerLength': 'Längd (veckor)',
+    'template.sheetName': 'Aktiviteter',
+    'template.fileName': 'arshjul-mall.xlsx',
+    'admin.title': 'Hantera användare',
+    'admin.sub': 'Bara mejladresser i den här listan kan skapa konto. Lägg till en ny adress, säg till personen själv, så kan de gå till sidan och välja sitt eget lösenord.',
+    'admin.closeAria': 'Stäng',
+    'admin.notesPh': 'Anteckning (valfritt)',
+    'admin.add': 'Lägg till',
+    'admin.adding': 'Lägger till…',
+    'admin.diag': 'Kör diagnostik',
+    'admin.loading': 'Hämtar listan…',
+    'admin.empty': 'Listan är tom — lägg till en mejladress för att börja bjuda in.',
+    'admin.you': '(du)',
+    'admin.cannotRemoveSelf': 'Du kan inte ta bort dig själv',
+    'admin.added': '{email} har lagts till. Säg till personen att de kan gå till sidan och skapa konto.',
+    'admin.duplicate': 'Den här mejladressen finns redan på listan.',
+    'admin.loadFailed': 'Kunde inte hämta listan: {err}',
+    'lang.toggleAria': 'Välj språk',
+  },
+  en: {
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    'auth.signin.title': 'Sign in',
+    'auth.signin.sub': 'Sign in with your email and password.',
+    'auth.signin.submit': 'Sign in',
+    'auth.signin.signing': 'Signing in...',
+    'auth.signin.toggleText': 'No account yet?',
+    'auth.signin.toggleLink': 'Create account',
+    'auth.signup.title': 'Create account',
+    'auth.signup.sub': 'Choose a password (at least 6 characters). Use the same email and password to sign in next time.',
+    'auth.signup.submit': 'Create account',
+    'auth.signup.signingUp': 'Creating account...',
+    'auth.signup.toggleText': 'Already have an account?',
+    'auth.signup.toggleLink': 'Sign in',
+    'auth.signup.confirmEmail': 'Account created. We sent a confirmation email to {email} — click the link there, then come back and sign in.',
+    'auth.reset.title': 'Forgot password',
+    'auth.reset.sub': 'Enter your email address and we\'ll send a link to choose a new password.',
+    'auth.reset.submit': 'Send reset link',
+    'auth.reset.sending': 'Sending...',
+    'auth.reset.sent': 'We sent a reset link to {email}. Click the link in the email to choose a new password. If you don\'t see the email, check your spam folder.',
+    'auth.newpw.title': 'Choose new password',
+    'auth.newpw.sub': 'Enter the new password (at least 6 characters). You\'ll be signed in automatically when it\'s saved.',
+    'auth.newpw.submit': 'Save new password',
+    'auth.newpw.saving': 'Saving...',
+    'auth.newpw.updated': 'Password updated. Sign in with the new password.',
+    'auth.forgotLink': 'Forgot password?',
+    'auth.backLink': '← Back to sign in',
+    'auth.emailPh': 'name@example.com',
+    'auth.passwordPh': 'Password (at least 6 characters)',
+    'auth.passwordPhNew': 'New password (at least 6 characters)',
+    'auth.unavailable': 'Sign-in service couldn\'t load. Check your connection and reload the page.',
+    'auth.sessionFailed': 'Sign in succeeded but session couldn\'t start. Reload the page and try again.',
+    'auth.err.notInvited': 'This email doesn\'t have access to the tool. Ask the administrator to add you.',
+    'auth.err.invalidCreds': 'Wrong email or password.',
+    'auth.err.notConfirmed': 'You need to confirm your email first. Check your inbox (and spam folder).',
+    'auth.err.alreadyExists': 'This account already exists. Click "Sign in" instead.',
+    'auth.err.tooShort': 'Password is too short — at least 6 characters.',
+    'auth.err.rateLimit': 'Too many attempts. Wait a moment and try again.',
+    'auth.err.weakPwd': 'Password is too weak — choose a longer or more complex one.',
+    'auth.err.generic': 'Something went wrong. Try again.',
+    'topbar.client': 'Client',
+    'topbar.year': 'Year',
+    'topbar.clientPh': 'e.g. Acme Inc.',
+    'topbar.newWheel': 'New wheel',
+    'topbar.uploadImage': 'Upload image',
+    'topbar.export': 'Download ▾',
+    'topbar.exportPng': 'As image (PNG)',
+    'topbar.exportPdf': 'As PDF',
+    'topbar.exportPpt': 'As PowerPoint',
+    'topbar.adminLink': 'Manage users',
+    'topbar.logout': 'Sign out',
+    'panel.rings.title': 'Rings',
+    'panel.rings.add': '+ Add ring',
+    'panel.rings.hint': 'Each ring is a category — e.g. Work environment, Development, Compensation & benefits.',
+    'panel.rings.empty': 'No rings yet. Click "+ Add ring" to start.',
+    'panel.rings.namePh': 'Ring name',
+    'panel.rings.dragHandle': 'Drag to reorder',
+    'panel.rings.colorAria': 'Choose color',
+    'panel.rings.removeTitle': 'Remove',
+    'panel.activities.title': 'Activities',
+    'panel.activities.import': 'Import',
+    'panel.activities.add': '+ Add',
+    'panel.activities.hintBefore': 'Choose a ring, start week (1–52) and how many weeks the activity runs. Want to import a list? ',
+    'panel.activities.hintLink': 'Download the template',
+    'panel.activities.hintAfter': '.',
+    'panel.activities.empty': 'No activities yet. Click "+ Add activity".',
+    'panel.activities.emptyNoRing': 'Add a ring first — activities belong to a ring.',
+    'panel.activities.namePh': 'Activity name',
+    'panel.activities.ring': 'Ring',
+    'panel.activities.startWeek': 'Start week',
+    'panel.activities.length': 'Length w.',
+    'wheel.aria': 'HR year wheel',
+    'wheel.centerFallback': 'Year wheel',
+    'wheel.emptyHint': 'Add a ring to begin',
+    'confirm.newWheel': 'Start over with a blank year wheel? The current wheel will be lost.',
+    'confirm.removeRing': 'Remove the ring and all its activities?',
+    'confirm.removeEmail': 'Remove {email} from the list? They can no longer create a new account, but existing accounts are unaffected.',
+    'toast.imageDownloaded': 'Image downloaded',
+    'toast.imageFailed': 'Couldn\'t save image',
+    'toast.pdfDownloaded': 'PDF downloaded',
+    'toast.pdfFailed': 'Couldn\'t create PDF',
+    'toast.pptDownloaded': 'PowerPoint downloaded',
+    'toast.pptFailed': 'Couldn\'t create PowerPoint',
+    'toast.pdfLoading': 'PDF library still loading — try again in a moment',
+    'toast.pptLoading': 'PowerPoint library still loading — try again in a moment',
+    'toast.importLoading': 'Import library loading — try again in a moment',
+    'toast.templateLoading': 'Template library loading — try again in a moment',
+    'toast.fileEmpty': 'File appears to be empty',
+    'toast.noRows': 'No rows found to import',
+    'toast.missingColumns': 'File is missing column for Activity or Start week',
+    'toast.noValidRows': 'No valid rows found — check the template',
+    'toast.importedActs': '{n} activities imported',
+    'toast.importedRings': '{n} new rings',
+    'toast.importedSkipped': '{n} skipped',
+    'toast.fileError': 'Couldn\'t read file — is it xlsx or csv?',
+    'toast.templateDownloaded': 'Template downloaded',
+    'toast.invalidPng': 'File is not a valid PNG image',
+    'toast.noProjectData': 'Image has no project data — choose an image downloaded from the app',
+    'toast.corruptData': 'Project data in the image is corrupt',
+    'toast.fileLoadError': 'Couldn\'t read file',
+    'toast.wheelLoaded': 'Wheel loaded — you can continue editing',
+    'toast.wheelLoadFailed': 'Couldn\'t load wheel — try reloading the page',
+    'activity.weekShort': 'w.',
+    'default.ring.workEnv': 'Work environment',
+    'default.ring.development': 'Development',
+    'default.ring.compensation': 'Compensation & benefits',
+    'default.activity.review': 'Performance review',
+    'default.activity.salaryReview': 'Salary review',
+    'default.activity.workplaceInsp': 'Workplace inspection',
+    'default.activity.summerParty': 'Summer party',
+    'default.activity.succession': 'Succession planning',
+    'default.ring.new': 'New ring',
+    'default.activity.new': 'New activity',
+    'default.ring.general': 'General',
+    'template.headerActivity': 'Activity',
+    'template.headerRing': 'Ring',
+    'template.headerStartWeek': 'Start week',
+    'template.headerLength': 'Length (weeks)',
+    'template.sheetName': 'Activities',
+    'template.fileName': 'year-wheel-template.xlsx',
+    'admin.title': 'Manage users',
+    'admin.sub': 'Only email addresses on this list can create an account. Add a new address, tell the person, and they can go to the site and choose their own password.',
+    'admin.closeAria': 'Close',
+    'admin.notesPh': 'Note (optional)',
+    'admin.add': 'Add',
+    'admin.adding': 'Adding…',
+    'admin.diag': 'Run diagnostics',
+    'admin.loading': 'Loading list…',
+    'admin.empty': 'List is empty — add an email to start inviting.',
+    'admin.you': '(you)',
+    'admin.cannotRemoveSelf': 'You can\'t remove yourself',
+    'admin.added': '{email} has been added. Tell the person they can go to the site and create an account.',
+    'admin.duplicate': 'This email is already on the list.',
+    'admin.loadFailed': 'Couldn\'t load list: {err}',
+    'lang.toggleAria': 'Choose language',
+  },
+};
+
+let currentLang = (function() {
+  try { return localStorage.getItem('hrArshjulLang') === 'en' ? 'en' : 'sv'; } catch { return 'sv'; }
+})();
+
+function t(key, vars) {
+  const dict = I18N[currentLang] || I18N.sv;
+  let s = dict[key];
+  if (s == null) s = (I18N.sv && I18N.sv[key]);
+  if (s == null) return key;
+  if (vars) {
+    for (const k in vars) s = String(s).split('{' + k + '}').join(vars[k]);
+  }
+  return s;
+}
+
+function monthName(idx) {
+  const m = (I18N[currentLang] || I18N.sv).months;
+  return m[idx];
+}
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.dataset.i18nTitle);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+  });
+  document.documentElement.lang = currentLang;
+}
+
+function setLanguage(lang) {
+  if (lang !== 'sv' && lang !== 'en') return;
+  currentLang = lang;
+  try { localStorage.setItem('hrArshjulLang', lang); } catch {}
+  applyI18n();
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof setAuthMode === 'function') setAuthMode(authMode);
+}
 
 // ---------- State ----------
 // Start with defaults; real wheel is fetched from Supabase after login.
@@ -32,16 +354,16 @@ function defaultState() {
     client: '',
     year: new Date().getFullYear(),
     rings: [
-      { id: rid(), name: 'Arbetsmiljö', color: RING_PALETTE[1] },
-      { id: rid(), name: 'Utveckling', color: RING_PALETTE[0] },
-      { id: rid(), name: 'Lön & förmåner', color: RING_PALETTE[2] },
+      { id: rid(), name: t('default.ring.workEnv'), color: RING_PALETTE[1] },
+      { id: rid(), name: t('default.ring.development'), color: RING_PALETTE[0] },
+      { id: rid(), name: t('default.ring.compensation'), color: RING_PALETTE[2] },
     ],
     activities: [
-      { id: rid(), name: 'Utvecklingssamtal', ringId: null, startWeek: 8, lengthWeeks: 4 },
-      { id: rid(), name: 'Lönerevision', ringId: null, startWeek: 14, lengthWeeks: 3 },
-      { id: rid(), name: 'Arbetsmiljörond', ringId: null, startWeek: 38, lengthWeeks: 2 },
-      { id: rid(), name: 'Sommarfest', ringId: null, startWeek: 25, lengthWeeks: 1 },
-      { id: rid(), name: 'Successionsplan', ringId: null, startWeek: 44, lengthWeeks: 6 },
+      { id: rid(), name: t('default.activity.review'), ringId: null, startWeek: 8, lengthWeeks: 4 },
+      { id: rid(), name: t('default.activity.salaryReview'), ringId: null, startWeek: 14, lengthWeeks: 3 },
+      { id: rid(), name: t('default.activity.workplaceInsp'), ringId: null, startWeek: 38, lengthWeeks: 2 },
+      { id: rid(), name: t('default.activity.summerParty'), ringId: null, startWeek: 25, lengthWeeks: 1 },
+      { id: rid(), name: t('default.activity.succession'), ringId: null, startWeek: 44, lengthWeeks: 6 },
     ],
   };
 }
@@ -138,7 +460,7 @@ $('downloadTemplateLink').addEventListener('click', e => {
 });
 setupRingDragAndDrop();
 $('newBtn').addEventListener('click', () => {
-  if (!confirm('Börja om med ett tomt årshjul? Nuvarande hjul försvinner.')) return;
+  if (!confirm(t('confirm.newWheel'))) return;
   state = defaultState();
   state.rings = [];
   state.activities = [];
@@ -152,6 +474,13 @@ $('uploadBtn').addEventListener('click', () => $('fileInput').click());
 $('fileInput').addEventListener('change', handleFileUpload);
 setupExportDropdown();
 
+// Language toggle — wire up all .lang-btn elements (auth screen and topbar)
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+  btn.classList.toggle('active', btn.dataset.lang === currentLang);
+});
+applyI18n();
+
 // ---------- Render ----------
 function renderAll() {
   renderRings();
@@ -163,7 +492,10 @@ function renderAll() {
 function renderRings() {
   ringList.innerHTML = '';
   if (state.rings.length === 0) {
-    ringList.innerHTML = `<li class="empty">Inga ringar än. Klicka "+ Lägg till ring" för att börja.</li>`;
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = t('panel.rings.empty');
+    ringList.appendChild(li);
     return;
   }
   state.rings.forEach((ring, i) => {
@@ -172,12 +504,12 @@ function renderRings() {
     li.draggable = true;
     li.dataset.ringId = ring.id;
     li.innerHTML = `
-      <span class="ring-handle" title="Dra för att ändra ordning" aria-label="Dra för att ändra ordning">⋮⋮</span>
+      <span class="ring-handle" title="${escapeHtml(t('panel.rings.dragHandle'))}" aria-label="${escapeHtml(t('panel.rings.dragHandle'))}">⋮⋮</span>
       <span class="ring-color" style="background:${ring.color}">
-        <input type="color" value="${ring.color}" data-id="${ring.id}" class="ring-color-input" aria-label="Välj färg" />
+        <input type="color" value="${ring.color}" data-id="${ring.id}" class="ring-color-input" aria-label="${escapeHtml(t('panel.rings.colorAria'))}" />
       </span>
-      <input class="ring-name" type="text" value="${escapeHtml(ring.name)}" data-id="${ring.id}" placeholder="Ringens namn" />
-      <button class="btn-icon" data-id="${ring.id}" data-action="delete-ring" title="Ta bort">✕</button>
+      <input class="ring-name" type="text" value="${escapeHtml(ring.name)}" data-id="${ring.id}" placeholder="${escapeHtml(t('panel.rings.namePh'))}" />
+      <button class="btn-icon" data-id="${ring.id}" data-action="delete-ring" title="${escapeHtml(t('panel.rings.removeTitle'))}">✕</button>
     `;
     ringList.appendChild(li);
   });
@@ -203,7 +535,7 @@ function renderRings() {
   ringList.querySelectorAll('[data-action="delete-ring"]').forEach(el => {
     el.addEventListener('click', e => {
       const id = e.target.dataset.id;
-      if (!confirm('Ta bort ringen och alla aktiviteter i den?')) return;
+      if (!confirm(t('confirm.removeRing'))) return;
       state.rings = state.rings.filter(r => r.id !== id);
       state.activities = state.activities.filter(a => a.ringId !== id);
       saveState(); renderAll();
@@ -214,11 +546,17 @@ function renderRings() {
 function renderActivities() {
   activityList.innerHTML = '';
   if (state.activities.length === 0) {
-    activityList.innerHTML = `<li class="empty">Inga aktiviteter än. Klicka "+ Lägg till aktivitet".</li>`;
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = t('panel.activities.empty');
+    activityList.appendChild(li);
     return;
   }
   if (state.rings.length === 0) {
-    activityList.innerHTML = `<li class="empty">Lägg till en ring först — aktiviteter tillhör en ring.</li>`;
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = t('panel.activities.emptyNoRing');
+    activityList.appendChild(li);
     return;
   }
   state.activities.forEach(act => {
@@ -227,26 +565,26 @@ function renderActivities() {
     const monthLabel = weekToMonthLabel(act.startWeek);
     li.innerHTML = `
       <div class="activity-row">
-        <input class="activity-name" type="text" value="${escapeHtml(act.name)}" data-id="${act.id}" data-field="name" placeholder="Aktivitetens namn" />
-        <button class="btn-icon" data-id="${act.id}" data-action="delete-activity" title="Ta bort">✕</button>
+        <input class="activity-name" type="text" value="${escapeHtml(act.name)}" data-id="${act.id}" data-field="name" placeholder="${escapeHtml(t('panel.activities.namePh'))}" />
+        <button class="btn-icon" data-id="${act.id}" data-action="delete-activity" title="${escapeHtml(t('panel.rings.removeTitle'))}">✕</button>
       </div>
       <div class="activity-meta">
         <div class="mini-field">
-          <label>Ring</label>
+          <label>${escapeHtml(t('panel.activities.ring'))}</label>
           <select data-id="${act.id}" data-field="ringId">
             ${state.rings.map(r => `<option value="${r.id}" ${r.id === act.ringId ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('')}
           </select>
         </div>
         <div class="mini-field">
-          <label>Startvecka</label>
+          <label>${escapeHtml(t('panel.activities.startWeek'))}</label>
           <input type="number" min="1" max="52" value="${act.startWeek}" data-id="${act.id}" data-field="startWeek" />
         </div>
         <div class="mini-field">
-          <label>Längd v.</label>
+          <label>${escapeHtml(t('panel.activities.length'))}</label>
           <input type="number" min="1" max="52" value="${act.lengthWeeks}" data-id="${act.id}" data-field="lengthWeeks" />
         </div>
       </div>
-      <div style="font-size:11px; color:var(--ink-faint); margin-top:2px;">≈ ${monthLabel}</div>
+      <div style="font-size:11px; color:var(--ink-faint); margin-top:2px;">≈ ${escapeHtml(monthLabel)}</div>
     `;
     activityList.appendChild(li);
   });
@@ -314,7 +652,7 @@ function renderWheel() {
       'text-anchor': 'middle',
       'dominant-baseline': 'middle',
       class: 'wheel-month-label',
-    }, 'Lägg till en ring för att börja');
+    }, t('wheel.emptyHint'));
     return;
   }
 
@@ -387,12 +725,12 @@ function renderWheel() {
       'text-anchor': 'middle',
       'dominant-baseline': 'middle',
       class: 'wheel-month-label',
-    }, MONTHS_SV[m]);
+    }, monthName(m));
   }
 
   // Center circle + client name (no year)
   appendSvg('circle', { cx: 0, cy: 0, r: innerR - 4, fill: '#fff', stroke: '#E5E0D7', 'stroke-width': 1 });
-  const title = (state.client || 'Årshjul').trim();
+  const title = (state.client || t('wheel.centerFallback')).trim();
   const lines = splitTitleOnWords(title, 12);
   const fontSize = lines.length === 1 ? 18 : 15;
 
@@ -589,9 +927,8 @@ function lightenColor(hex, amount) {
 }
 
 function weekToMonthLabel(week) {
-  const dayInYear = (week - 1) * 7 + 1;
   const monthIdx = Math.min(11, Math.floor((week - 1) / 4.333));
-  return MONTHS_SV[monthIdx] + ' (v.' + week + ')';
+  return monthName(monthIdx) + ' (' + t('activity.weekShort') + week + ')';
 }
 
 function escapeHtml(str) {
@@ -628,16 +965,16 @@ async function handleActivitiesImport(e) {
   e.target.value = '';
   if (!file) return;
   if (typeof XLSX === 'undefined') {
-    toast('Importbiblioteket laddar — försök igen om en stund');
+    toast(t('toast.importLoading'));
     return;
   }
   try {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws) { toast('Filen verkar tom'); return; }
+    if (!ws) { toast(t('toast.fileEmpty')); return; }
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
-    if (rows.length < 2) { toast('Hittade inga rader att importera'); return; }
+    if (rows.length < 2) { toast(t('toast.noRows')); return; }
 
     const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
     const nameCol  = findColumn(headers, COL_ALIASES.name);
@@ -646,7 +983,7 @@ async function handleActivitiesImport(e) {
     const lenCol   = findColumn(headers, COL_ALIASES.length);
 
     if (nameCol === -1 || startCol === -1) {
-      toast('Filen saknar kolumn för Aktivitet eller Startvecka');
+      toast(t('toast.missingColumns'));
       return;
     }
 
@@ -686,7 +1023,7 @@ async function handleActivitiesImport(e) {
         ring = newRings[0];
       } else {
         // No ring at all — create a default
-        ring = { id: rid(), name: 'Allmänt', color: nextColor() };
+        ring = { id: rid(), name: t('default.ring.general'), color: nextColor() };
         newRings.push(ring);
       }
 
@@ -700,7 +1037,7 @@ async function handleActivitiesImport(e) {
     }
 
     if (newActivities.length === 0) {
-      toast('Inga giltiga rader hittades — kontrollera mallen');
+      toast(t('toast.noValidRows'));
       return;
     }
 
@@ -710,35 +1047,44 @@ async function handleActivitiesImport(e) {
     saveState();
     renderAll();
 
-    let msg = `${newActivities.length} aktiviteter importerade`;
-    if (newRings.length) msg += ` · ${newRings.length} nya ringar`;
-    if (skipped) msg += ` · ${skipped} hoppades över`;
+    let msg = t('toast.importedActs', { n: newActivities.length });
+    if (newRings.length) msg += ' · ' + t('toast.importedRings', { n: newRings.length });
+    if (skipped) msg += ' · ' + t('toast.importedSkipped', { n: skipped });
     toast(msg);
   } catch (err) {
     console.error(err);
-    toast('Kunde inte läsa filen — är det en xlsx eller csv?');
+    toast(t('toast.fileError'));
   }
 }
 
 function downloadActivitiesTemplate() {
   if (typeof XLSX === 'undefined') {
-    toast('Mall-biblioteket laddar — försök igen om en stund');
+    toast(t('toast.templateLoading'));
     return;
   }
-  const data = [
-    ['Aktivitet', 'Ring', 'Startvecka', 'Längd (veckor)'],
+  const sampleData = currentLang === 'en' ? [
+    ['Salary review meeting', 'Compensation & benefits', 14, 3],
+    ['Performance review', 'Development', 8, 4],
+    ['Summer party', 'Work environment', 25, 1],
+    ['Skills development Q3', 'Skills development', 36, 6],
+    ['Succession planning', 'Development', 44, 6],
+  ] : [
     ['Lönesamtal', 'Lön & förmåner', 14, 3],
     ['Utvecklingssamtal', 'Utveckling', 8, 4],
     ['Sommarfest', 'Arbetsmiljö', 25, 1],
     ['Kompetensutveckling Q3', 'Kompetensutveckling', 36, 6],
     ['Successionsplan', 'Utveckling', 44, 6],
   ];
+  const data = [
+    [t('template.headerActivity'), t('template.headerRing'), t('template.headerStartWeek'), t('template.headerLength')],
+    ...sampleData,
+  ];
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 16 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Aktiviteter');
-  XLSX.writeFile(wb, 'arshjul-mall.xlsx');
-  toast('Mall nedladdad');
+  XLSX.utils.book_append_sheet(wb, ws, t('template.sheetName'));
+  XLSX.writeFile(wb, t('template.fileName'));
+  toast(t('toast.templateDownloaded'));
 }
 
 // ---------- Drag-and-drop reorder of rings ----------
@@ -810,7 +1156,7 @@ function setupRingDragAndDrop() {
 function addRing() {
   const usedColors = state.rings.map(r => r.color);
   const color = RING_PALETTE.find(c => !usedColors.includes(c)) || RING_PALETTE[state.rings.length % RING_PALETTE.length];
-  state.rings.unshift({ id: rid(), name: 'Ny ring', color });
+  state.rings.unshift({ id: rid(), name: t('default.ring.new'), color });
   saveState(); renderAll();
   // focus the new (top) name input
   setTimeout(() => {
@@ -821,12 +1167,12 @@ function addRing() {
 
 function addActivity() {
   if (state.rings.length === 0) {
-    alert('Lägg till en ring först — aktiviteter tillhör en ring.');
+    alert(t('panel.activities.emptyNoRing'));
     return;
   }
   state.activities.unshift({
     id: rid(),
-    name: 'Ny aktivitet',
+    name: t('default.activity.new'),
     ringId: state.rings[0].id,
     startWeek: 1,
     lengthWeeks: 2,
@@ -922,17 +1268,17 @@ async function buildWheelPngBlob() {
 async function exportWheelPNG() {
   try {
     const blob = await buildWheelPngBlob();
-    downloadBlob(blob, `arshjul-${safeClientName()}-${state.year}.png`);
-    toast('Bilden är nedladdad');
+    downloadBlob(blob, `${exportFilenameStem()}-${safeClientName()}-${state.year}.png`);
+    toast(t('toast.imageDownloaded'));
   } catch (e) {
     console.error(e);
-    toast('Kunde inte spara bilden');
+    toast(t('toast.imageFailed'));
   }
 }
 
 async function exportWheelPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    toast('PDF-biblioteket laddar fortfarande — försök igen om en stund');
+    toast(t('toast.pdfLoading'));
     return;
   }
   try {
@@ -946,7 +1292,7 @@ async function exportWheelPDF() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(20);
     doc.setTextColor(26, 35, 50);
-    const title = (state.client || 'Årshjul').trim();
+    const title = (state.client || t('wheel.centerFallback')).trim();
     doc.text(`${title}  ·  ${state.year}`, pageW / 2, 18, { align: 'center' });
 
     // Wheel (square, centered)
@@ -956,11 +1302,11 @@ async function exportWheelPDF() {
     // Legend at the bottom — wraps if needed
     drawPdfLegend(doc, pageW, pageH);
 
-    doc.save(`arshjul-${safeClientName()}-${state.year}.pdf`);
-    toast('PDF nedladdad');
+    doc.save(`${exportFilenameStem()}-${safeClientName()}-${state.year}.pdf`);
+    toast(t('toast.pdfDownloaded'));
   } catch (e) {
     console.error(e);
-    toast('Kunde inte skapa PDF');
+    toast(t('toast.pdfFailed'));
   }
 }
 
@@ -994,7 +1340,7 @@ function drawPdfLegend(doc, pageW, pageH) {
 
 async function exportWheelPPT() {
   if (typeof PptxGenJS === 'undefined') {
-    toast('PowerPoint-biblioteket laddar fortfarande — försök igen om en stund');
+    toast(t('toast.pptLoading'));
     return;
   }
   try {
@@ -1007,7 +1353,7 @@ async function exportWheelPPT() {
     slide.background = { color: 'FFFFFF' };
 
     // Title
-    slide.addText(`${(state.client || 'Årshjul').trim()}  ·  ${state.year}`, {
+    slide.addText(`${(state.client || t('wheel.centerFallback')).trim()}  ·  ${state.year}`, {
       x: 0.5, y: 0.3, w: slideW - 1, h: 0.6,
       fontSize: 24, fontFace: 'Calibri', color: '1A2332',
       align: 'center', valign: 'middle', bold: false,
@@ -1024,11 +1370,11 @@ async function exportWheelPPT() {
     // Legend row at bottom
     addPptLegend(slide, slideW, slideH);
 
-    await pres.writeFile({ fileName: `arshjul-${safeClientName()}-${state.year}.pptx` });
-    toast('PowerPoint nedladdad');
+    await pres.writeFile({ fileName: `${exportFilenameStem()}-${safeClientName()}-${state.year}.pptx` });
+    toast(t('toast.pptDownloaded'));
   } catch (e) {
     console.error(e);
-    toast('Kunde inte skapa PowerPoint');
+    toast(t('toast.pptFailed'));
   }
 }
 
@@ -1083,7 +1429,11 @@ function blobToDataUrl(blob) {
   });
 }
 function safeClientName() {
-  return (state.client || 'kund').trim().replace(/[^a-zA-ZåäöÅÄÖ0-9_-]/g, '_') || 'kund';
+  const fallback = currentLang === 'en' ? 'client' : 'kund';
+  return (state.client || fallback).trim().replace(/[^a-zA-ZåäöÅÄÖ0-9_-]/g, '_') || fallback;
+}
+function exportFilenameStem() {
+  return currentLang === 'en' ? 'year-wheel' : 'arshjul';
 }
 function hexToRgb(hex) {
   const c = hex.replace('#', '');
@@ -1109,7 +1459,7 @@ async function initAuth() {
   }, 1500);
 
   if (typeof supabase === 'undefined') {
-    showAuthMessage('Inloggningstjänsten kunde inte laddas. Kontrollera nätet och ladda om sidan.', true);
+    showAuthMessage(t('auth.unavailable'), true);
     showLoginScreen();
     return;
   }
@@ -1164,74 +1514,75 @@ function setAuthMode(mode) {
   $('authBackRow').hidden = true;
 
   if (mode === 'signin') {
-    $('authTitle').textContent = 'Logga in';
-    $('authSub').textContent = 'Logga in med din e-post och ditt lösenord.';
-    $('authSubmitBtn').textContent = 'Logga in';
+    $('authTitle').textContent = t('auth.signin.title');
+    $('authSub').textContent = t('auth.signin.sub');
+    $('authSubmitBtn').textContent = t('auth.signin.submit');
     pwEl.setAttribute('autocomplete', 'current-password');
-    pwEl.placeholder = 'Lösenord (minst 6 tecken)';
-    $('authToggleText').textContent = 'Inget konto än?';
-    $('authToggleLink').textContent = 'Skapa konto';
+    pwEl.placeholder = t('auth.passwordPh');
+    $('authToggleText').textContent = t('auth.signin.toggleText');
+    $('authToggleLink').textContent = t('auth.signin.toggleLink');
     $('authForgotRow').hidden = false;
     $('authToggleRow').hidden = false;
   } else if (mode === 'signup') {
-    $('authTitle').textContent = 'Skapa konto';
-    $('authSub').textContent = 'Välj ett lösenord (minst 6 tecken). Du behåller samma e-post och lösenord för att logga in nästa gång.';
-    $('authSubmitBtn').textContent = 'Skapa konto';
+    $('authTitle').textContent = t('auth.signup.title');
+    $('authSub').textContent = t('auth.signup.sub');
+    $('authSubmitBtn').textContent = t('auth.signup.submit');
     pwEl.setAttribute('autocomplete', 'new-password');
-    pwEl.placeholder = 'Lösenord (minst 6 tecken)';
-    $('authToggleText').textContent = 'Har du redan ett konto?';
-    $('authToggleLink').textContent = 'Logga in';
+    pwEl.placeholder = t('auth.passwordPh');
+    $('authToggleText').textContent = t('auth.signup.toggleText');
+    $('authToggleLink').textContent = t('auth.signup.toggleLink');
     $('authToggleRow').hidden = false;
   } else if (mode === 'reset') {
-    $('authTitle').textContent = 'Glömt lösenord';
-    $('authSub').textContent = 'Skriv in din e-postadress så skickar vi en länk för att välja ett nytt lösenord.';
-    $('authSubmitBtn').textContent = 'Skicka återställningslänk';
+    $('authTitle').textContent = t('auth.reset.title');
+    $('authSub').textContent = t('auth.reset.sub');
+    $('authSubmitBtn').textContent = t('auth.reset.submit');
     pwEl.hidden = true;
     pwEl.disabled = true;
     $('authBackRow').hidden = false;
   } else if (mode === 'newpw') {
-    $('authTitle').textContent = 'Välj nytt lösenord';
-    $('authSub').textContent = 'Skriv in det nya lösenordet (minst 6 tecken). Du loggas in automatiskt när det är sparat.';
-    $('authSubmitBtn').textContent = 'Spara nytt lösenord';
+    $('authTitle').textContent = t('auth.newpw.title');
+    $('authSub').textContent = t('auth.newpw.sub');
+    $('authSubmitBtn').textContent = t('auth.newpw.submit');
     emailEl.hidden = true;
     emailEl.disabled = true;
     pwEl.setAttribute('autocomplete', 'new-password');
-    pwEl.placeholder = 'Nytt lösenord (minst 6 tecken)';
+    pwEl.placeholder = t('auth.passwordPhNew');
     pwEl.value = '';
   }
+  $('authForgotLink').textContent = t('auth.forgotLink');
+  $('authBackLink').textContent = t('auth.backLink');
+  emailEl.placeholder = t('auth.emailPh');
   showAuthMessage('', false);
 }
 
 function translateAuthError(message) {
   const m = String(message || '').toLowerCase();
-  if (m.includes('inte inbjuden') || m.includes('inbjudna')) {
-    return 'Den här e-postadressen har inte tillgång till verktyget. Be administratören att lägga till dig.';
-  }
-  if (m.includes('invalid login') || m.includes('invalid credentials')) return 'Fel e-post eller lösenord.';
-  if (m.includes('email not confirmed')) return 'Du måste bekräfta din e-post först. Kolla inkorgen (och skräpposten).';
-  if (m.includes('user already registered') || m.includes('already exists')) return 'Det här kontot finns redan. Tryck på "Logga in" istället.';
-  if (m.includes('password should be at least')) return 'Lösenordet är för kort — minst 6 tecken.';
-  if (m.includes('rate limit')) return 'För många försök. Vänta en stund och försök igen.';
-  if (m.includes('weak password')) return 'Lösenordet är för svagt — välj ett längre eller mer komplext.';
+  if (m.includes('inte inbjuden') || m.includes('inbjudna')) return t('auth.err.notInvited');
+  if (m.includes('invalid login') || m.includes('invalid credentials')) return t('auth.err.invalidCreds');
+  if (m.includes('email not confirmed')) return t('auth.err.notConfirmed');
+  if (m.includes('user already registered') || m.includes('already exists')) return t('auth.err.alreadyExists');
+  if (m.includes('password should be at least')) return t('auth.err.tooShort');
+  if (m.includes('rate limit')) return t('auth.err.rateLimit');
+  if (m.includes('weak password')) return t('auth.err.weakPwd');
   if (m.includes('database error') && m.includes('saving')) {
     // The signup trigger raises an exception that surfaces as a generic db error
-    return 'Den här e-postadressen har inte tillgång till verktyget. Be administratören att lägga till dig.';
+    return t('auth.err.notInvited');
   }
-  return message || 'Något gick fel. Försök igen.';
+  return message || t('auth.err.generic');
 }
 
 async function handleResetRequest(email) {
   const submitBtn = $('authSubmitBtn');
   const originalLabel = submitBtn.textContent;
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Skickar...';
+  submitBtn.textContent = t('auth.reset.sending');
   showAuthMessage('', false);
   try {
     const { error } = await sb.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + window.location.pathname,
     });
     if (error) throw error;
-    showAuthMessage(`Vi har skickat en återställningslänk till ${email}. Klicka på länken i mejlet för att välja ett nytt lösenord. Om du inte ser mejlet, kolla skräpposten.`, false);
+    showAuthMessage(t('auth.reset.sent', { email }), false);
   } catch (err) {
     showAuthMessage(translateAuthError(err.message || err), true);
   } finally {
@@ -1244,7 +1595,7 @@ async function handleNewPassword(password) {
   const submitBtn = $('authSubmitBtn');
   const originalLabel = submitBtn.textContent;
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Sparar...';
+  submitBtn.textContent = t('auth.newpw.saving');
   showAuthMessage('', false);
   try {
     const { data, error } = await sb.auth.updateUser({ password });
@@ -1259,7 +1610,7 @@ async function handleNewPassword(password) {
       if (sessUser) await onSignedIn(sessUser);
       else {
         setAuthMode('signin');
-        showAuthMessage('Lösenordet är uppdaterat. Logga in med det nya lösenordet.', false);
+        showAuthMessage(t('auth.newpw.updated'), false);
       }
     }
   } catch (err) {
@@ -1292,7 +1643,7 @@ function setupAuthHandlers() {
     const submitBtn = $('authSubmitBtn');
     const originalLabel = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = authMode === 'signin' ? 'Loggar in...' : 'Skapar konto...';
+    submitBtn.textContent = authMode === 'signin' ? t('auth.signin.signing') : t('auth.signup.signingUp');
     showAuthMessage('', false);
     try {
       const fn = authMode === 'signin' ? sb.auth.signInWithPassword : sb.auth.signUp;
@@ -1308,7 +1659,7 @@ function setupAuthHandlers() {
 
       if (authMode === 'signup' && !user && !(data && data.session)) {
         // Email confirmation required and account just created
-        showAuthMessage(`Konto skapat. Vi har skickat ett bekräftelsemejl till ${email} — klicka på länken där och kom sedan tillbaka och logga in.`, false);
+        showAuthMessage(t('auth.signup.confirmEmail', { email }), false);
         setAuthMode('signin');
       } else if (user) {
         // Force the screen swap synchronously, BEFORE awaiting any wheel data.
@@ -1319,11 +1670,11 @@ function setupAuthHandlers() {
         // Load wheel + admin status in background; don't block UI swap on them
         loadUserWheel(user.id).catch(err => {
           console.error('loadUserWheel failed:', err);
-          toast('Hjulet kunde inte laddas — försök ladda om sidan');
+          toast(t('toast.wheelLoadFailed'));
         });
         refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
       } else {
-        showAuthMessage('Inloggning gick igenom men sessionen kunde inte startas. Ladda om sidan och försök igen.', true);
+        showAuthMessage(t('auth.sessionFailed'), true);
       }
     } catch (err) {
       showAuthMessage(translateAuthError(err.message || err), true);
@@ -1528,12 +1879,12 @@ async function callAdminApi(action, extra) {
 
 async function renderAdminEmailList() {
   const list = $('adminEmailList');
-  list.innerHTML = '<li class="admin-email-empty">Hämtar listan…</li>';
+  list.innerHTML = `<li class="admin-email-empty">${escapeHtml(t('admin.loading'))}</li>`;
   try {
     const data = await callAdminApi('list');
     list.innerHTML = '';
     if (!data || data.length === 0) {
-      list.innerHTML = '<li class="admin-email-empty">Listan är tom — lägg till en mejladress för att börja bjuda in.</li>';
+      list.innerHTML = `<li class="admin-email-empty">${escapeHtml(t('admin.empty'))}</li>`;
       return;
     }
     const myEmail = (currentUser && currentUser.email || '').toLowerCase();
@@ -1541,10 +1892,11 @@ async function renderAdminEmailList() {
       const isSelf = row.email.toLowerCase() === myEmail;
       const li = document.createElement('li');
       li.className = 'admin-email-row' + (isSelf ? ' is-self' : '');
+      const removeTitle = isSelf ? t('admin.cannotRemoveSelf') : t('panel.rings.removeTitle');
       li.innerHTML = `
-        <span class="admin-email">${escapeHtml(row.email)}${isSelf ? ' (du)' : ''}</span>
+        <span class="admin-email">${escapeHtml(row.email)}${isSelf ? ' ' + escapeHtml(t('admin.you')) : ''}</span>
         <span class="admin-notes">${escapeHtml(row.notes || '')}</span>
-        <button class="btn-icon" type="button" data-email="${escapeHtml(row.email)}" ${isSelf ? 'disabled title="Du kan inte ta bort dig själv"' : 'title="Ta bort"'}>✕</button>
+        <button class="btn-icon" type="button" data-email="${escapeHtml(row.email)}" ${isSelf ? 'disabled' : ''} title="${escapeHtml(removeTitle)}">✕</button>
       `;
       list.appendChild(li);
     });
@@ -1554,7 +1906,7 @@ async function renderAdminEmailList() {
   } catch (err) {
     console.error('admin_list_emails error:', err);
     list.innerHTML = '';
-    showAdminMessage('Kunde inte hämta listan: ' + (err.message || err), true);
+    showAdminMessage(t('admin.loadFailed', { err: err.message || err }), true);
   }
 }
 
@@ -1566,27 +1918,27 @@ async function handleAdminAdd(e) {
   showAdminMessage('', false);
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalText = submitBtn ? submitBtn.textContent : '';
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Lägger till…'; }
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = t('admin.adding'); }
   try {
     await callAdminApi('add', { email: emailRaw, notes: notes || null });
     $('adminAddEmail').value = '';
     $('adminAddNotes').value = '';
-    showAdminMessage(`${emailRaw} har lagts till. Säg till personen att de kan gå till sidan och skapa konto.`, false);
+    showAdminMessage(t('admin.added', { email: emailRaw }), false);
     await renderAdminEmailList();
   } catch (err) {
     let msg = err.message || String(err);
     if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('unique')) {
-      msg = 'Den här mejladressen finns redan på listan.';
+      msg = t('admin.duplicate');
     }
     console.error('admin_add_email error:', err);
     showAdminMessage(msg, true);
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText || 'Lägg till'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText || t('admin.add'); }
   }
 }
 
 async function handleAdminRemove(email) {
-  if (!confirm(`Ta bort ${email} från listan? Personen kan inte längre skapa nytt konto, men befintliga konton påverkas inte.`)) return;
+  if (!confirm(t('confirm.removeEmail', { email }))) return;
   showAdminMessage('', false);
   try {
     await callAdminApi('remove', { email: email });
@@ -1756,18 +2108,18 @@ async function handleFileUpload(e) {
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
     if (!isPng(bytes)) {
-      toast('Filen är inte en giltig PNG-bild');
+      toast(t('toast.invalidPng'));
       return;
     }
     const stateB64 = readTextChunk(bytes, PNG_KEYWORD);
     if (!stateB64) {
-      toast('Bilden saknar projektdata — välj en bild som laddats ner från appen');
+      toast(t('toast.noProjectData'));
       return;
     }
     const stateJson = decodeURIComponent(escape(atob(stateB64)));
     const loaded = JSON.parse(stateJson);
     if (!loaded || !Array.isArray(loaded.rings) || !Array.isArray(loaded.activities)) {
-      toast('Projektdatan i bilden är skadad');
+      toast(t('toast.corruptData'));
       return;
     }
     state = loaded;
@@ -1775,10 +2127,10 @@ async function handleFileUpload(e) {
     clientYearInput.value = state.year || new Date().getFullYear();
     saveState();
     renderAll();
-    toast('Hjulet är inläst — du kan fortsätta redigera');
+    toast(t('toast.wheelLoaded'));
   } catch (err) {
     console.error(err);
-    toast('Kunde inte läsa filen');
+    toast(t('toast.fileLoadError'));
   }
 }
 

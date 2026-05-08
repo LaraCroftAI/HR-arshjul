@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=27" />
+  <link rel="stylesheet" href="style.css?v=28" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -42,6 +42,10 @@
       <div class="auth-toggle" id="authBackRow" hidden>
         <a href="#" id="authBackLink">← Tillbaka till inloggning</a>
       </div>
+      <div class="lang-toggle" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
+        <button type="button" class="lang-btn" data-lang="sv">SV</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
     </div>
   </div>
 
@@ -55,30 +59,34 @@
       </div>
       <div class="client-meta">
         <label class="field">
-          <span class="field-label">Kund</span>
-          <input id="clientName" type="text" placeholder="t.ex. Acme AB" />
+          <span class="field-label" data-i18n="topbar.client">Kund</span>
+          <input id="clientName" type="text" data-i18n-placeholder="topbar.clientPh" placeholder="t.ex. Acme AB" />
         </label>
         <label class="field">
-          <span class="field-label">År</span>
+          <span class="field-label" data-i18n="topbar.year">År</span>
           <input id="clientYear" type="number" min="2020" max="2100" value="2026" />
         </label>
       </div>
       <div class="topbar-actions">
-        <button id="newBtn" class="btn btn-ghost">Nytt hjul</button>
-        <button id="uploadBtn" class="btn btn-ghost">Ladda upp bild</button>
+        <button id="newBtn" class="btn btn-ghost" data-i18n="topbar.newWheel">Nytt hjul</button>
+        <button id="uploadBtn" class="btn btn-ghost" data-i18n="topbar.uploadImage">Ladda upp bild</button>
         <div class="dropdown">
-          <button id="exportBtn" class="btn btn-primary">Ladda ner ▾</button>
+          <button id="exportBtn" class="btn btn-primary" data-i18n="topbar.export">Ladda ner ▾</button>
           <div id="exportMenu" class="dropdown-menu" hidden>
-            <button class="dropdown-item" data-format="png">Som bild (PNG)</button>
-            <button class="dropdown-item" data-format="pdf">Som PDF</button>
-            <button class="dropdown-item" data-format="ppt">Som PowerPoint</button>
+            <button class="dropdown-item" data-format="png" data-i18n="topbar.exportPng">Som bild (PNG)</button>
+            <button class="dropdown-item" data-format="pdf" data-i18n="topbar.exportPdf">Som PDF</button>
+            <button class="dropdown-item" data-format="ppt" data-i18n="topbar.exportPpt">Som PowerPoint</button>
           </div>
         </div>
+        <div class="lang-toggle lang-toggle-topbar" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
+          <button type="button" class="lang-btn" data-lang="sv">SV</button>
+          <button type="button" class="lang-btn" data-lang="en">EN</button>
+        </div>
         <div class="user-block">
-          <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none">Hantera användare</a>
-          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none">Hantera användare</button>
+          <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none" data-i18n="topbar.adminLink">Hantera användare</a>
+          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none" data-i18n="topbar.adminLink">Hantera användare</button>
           <span id="userEmail" class="user-email"></span>
-          <button id="logoutBtn" class="btn btn-ghost btn-small" type="button">Logga ut</button>
+          <button id="logoutBtn" class="btn btn-ghost btn-small" type="button" data-i18n="topbar.logout">Logga ut</button>
         </div>
         <input id="fileInput" type="file" accept="image/png" hidden />
       </div>
@@ -89,22 +97,22 @@
     <section class="panel">
       <div class="panel-section">
         <div class="section-head">
-          <h2>Ringar</h2>
-          <button id="addRingBtn" class="btn btn-small">+ Lägg till ring</button>
+          <h2 data-i18n="panel.rings.title">Ringar</h2>
+          <button id="addRingBtn" class="btn btn-small" data-i18n="panel.rings.add">+ Lägg till ring</button>
         </div>
-        <p class="hint">Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön &amp; förmåner.</p>
+        <p class="hint" data-i18n="panel.rings.hint">Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön &amp; förmåner.</p>
         <ul id="ringList" class="ring-list"></ul>
       </div>
 
       <div class="panel-section">
         <div class="section-head">
-          <h2>Aktiviteter</h2>
+          <h2 data-i18n="panel.activities.title">Aktiviteter</h2>
           <div class="section-actions">
-            <button id="importActivitiesBtn" class="btn btn-small">Importera</button>
-            <button id="addActivityBtn" class="btn btn-small">+ Lägg till</button>
+            <button id="importActivitiesBtn" class="btn btn-small" data-i18n="panel.activities.import">Importera</button>
+            <button id="addActivityBtn" class="btn btn-small" data-i18n="panel.activities.add">+ Lägg till</button>
           </div>
         </div>
-        <p class="hint">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? <a href="#" id="downloadTemplateLink">Hämta mallen</a>.</p>
+        <p class="hint"><span data-i18n="panel.activities.hintBefore">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? </span><a href="#" id="downloadTemplateLink" data-i18n="panel.activities.hintLink">Hämta mallen</a><span data-i18n="panel.activities.hintAfter">.</span></p>
         <input id="activitiesFileInput" type="file" accept=".xlsx,.xls,.csv" hidden />
         <ul id="activityList" class="activity-list"></ul>
       </div>
@@ -112,7 +120,7 @@
 
     <section class="wheel-area">
       <div class="wheel-frame">
-        <svg id="wheel" viewBox="-260 -260 520 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HR årshjul"></svg>
+        <svg id="wheel" viewBox="-260 -260 520 520" xmlns="http://www.w3.org/2000/svg" role="img" data-i18n-aria-label="wheel.aria" aria-label="HR årshjul"></svg>
       </div>
       <div class="legend" id="legend"></div>
     </section>
@@ -124,18 +132,18 @@
   <div id="adminModal" class="modal-backdrop" hidden>
     <div class="modal-card" role="dialog" aria-labelledby="adminModalTitle">
       <div class="modal-head">
-        <h2 id="adminModalTitle">Hantera användare</h2>
-        <button id="adminCloseBtn" class="btn-icon" type="button" aria-label="Stäng">✕</button>
+        <h2 id="adminModalTitle" data-i18n="admin.title">Hantera användare</h2>
+        <button id="adminCloseBtn" class="btn-icon" type="button" data-i18n-aria-label="admin.closeAria" aria-label="Stäng">✕</button>
       </div>
-      <p class="modal-sub">Bara mejladresser i den här listan kan skapa konto. Lägg till en ny adress, säg till personen själv, så kan de gå till sidan och välja sitt eget lösenord.</p>
+      <p class="modal-sub" data-i18n="admin.sub">Bara mejladresser i den här listan kan skapa konto. Lägg till en ny adress, säg till personen själv, så kan de gå till sidan och välja sitt eget lösenord.</p>
 
       <form id="adminAddForm" class="admin-add-form" autocomplete="off">
-        <input id="adminAddEmail" type="email" required placeholder="namn@exempel.se" />
-        <input id="adminAddNotes" type="text" placeholder="Anteckning (valfritt)" />
-        <button class="btn btn-primary" type="submit">Lägg till</button>
+        <input id="adminAddEmail" type="email" required data-i18n-placeholder="auth.emailPh" placeholder="namn@exempel.se" />
+        <input id="adminAddNotes" type="text" data-i18n-placeholder="admin.notesPh" placeholder="Anteckning (valfritt)" />
+        <button class="btn btn-primary" type="submit" data-i18n="admin.add">Lägg till</button>
       </form>
       <div id="adminMessage" class="auth-message" hidden></div>
-      <button id="adminDiagBtn" class="btn btn-ghost btn-small" type="button" style="margin-top:8px">Kör diagnostik</button>
+      <button id="adminDiagBtn" class="btn btn-ghost btn-small" type="button" style="margin-top:8px" data-i18n="admin.diag">Kör diagnostik</button>
 
       <ul id="adminEmailList" class="admin-email-list"></ul>
     </div>
@@ -143,6 +151,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=27" defer></script>
+  <script src="app.js?v=28" defer></script>
 </body>
 </html>
