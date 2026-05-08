@@ -178,7 +178,8 @@ const I18N = {
     'admin.duplicate': 'Den här mejladressen finns redan på listan.',
     'admin.loadFailed': 'Kunde inte hämta listan: {err}',
     'lang.toggleAria': 'Välj språk',
-    'layout.toggleAria': 'Välj vy',
+    'layout.toggleAria': 'Välj layout',
+    'layout.label': 'Layout',
     'layout.wheel': 'Klassisk',
     'layout.agenda': 'Agenda',
   },
@@ -319,7 +320,8 @@ const I18N = {
     'admin.duplicate': 'This email is already on the list.',
     'admin.loadFailed': 'Couldn\'t load list: {err}',
     'lang.toggleAria': 'Choose language',
-    'layout.toggleAria': 'Choose view',
+    'layout.toggleAria': 'Choose layout',
+    'layout.label': 'Layout',
     'layout.wheel': 'Classic',
     'layout.agenda': 'Agenda',
   },
@@ -533,8 +535,6 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
 })();
 function refreshLayoutToggle() {
   const cur = getLayout();
-  const label = document.querySelector('#layoutBtn .layout-current');
-  if (label) label.textContent = t(cur === 'agenda' ? 'layout.agenda' : 'layout.wheel');
   document.querySelectorAll('.layout-option').forEach(b => {
     b.classList.toggle('is-current', b.dataset.layout === cur);
   });
