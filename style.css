@@ -162,6 +162,12 @@ h1, h2, h3 {
   border-color: var(--line);
 }
 .btn-small:hover { background: var(--surface-soft); border-color: var(--line-strong); }
+.btn-primary.btn-small {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.btn-primary.btn-small:hover { background: #2A3445; border-color: #2A3445; }
 .btn-icon {
   background: transparent;
   border: none;
@@ -657,19 +663,20 @@ h1, h2, h3 {
 .lang-toggle .lang-btn {
   border: 0;
   background: transparent;
-  padding: 4px 12px;
+  padding: 5px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--ink);
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.lang-toggle .lang-btn:hover { color: var(--ink); }
+.lang-toggle .lang-btn:hover { background: rgba(20, 26, 40, 0.06); }
 .lang-toggle .lang-btn.active {
   background: var(--ink);
   color: #fff;
 }
+.lang-toggle .lang-btn.active:hover { background: #2A3445; }
 .auth-card .lang-toggle {
   margin: 24px auto 0;
   display: flex;
