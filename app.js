@@ -671,8 +671,8 @@ function renderWheel() {
     appendSvg('path', {
       d: ringBandPath(r1, r2),
       fill: lightenColor(ring.color, 0.92),
-      stroke: '#E5E0D7',
-      'stroke-width': 0.5,
+      stroke: '#1A2332',
+      'stroke-width': 0.8,
     });
   });
 
@@ -730,7 +730,7 @@ function renderWheel() {
   }
 
   // Center circle + client name (no year)
-  appendSvg('circle', { cx: 0, cy: 0, r: innerR - 4, fill: '#fff', stroke: '#E5E0D7', 'stroke-width': 1 });
+  appendSvg('circle', { cx: 0, cy: 0, r: innerR - 4, fill: '#fff', stroke: '#1A2332', 'stroke-width': 0.8 });
   const title = (state.client || t('wheel.centerFallback')).trim();
   const lines = splitTitleOnWords(title, 12);
   const fontSize = lines.length === 1 ? 18 : 15;
