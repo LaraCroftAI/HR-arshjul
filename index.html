@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=45" />
+  <link rel="stylesheet" href="style.css?v=46" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -67,6 +67,13 @@
           <input id="clientYear" type="number" min="2020" max="2100" value="2026" />
         </label>
       </div>
+      <div class="user-block">
+        <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none" data-i18n="topbar.adminLink">Hantera användare</a>
+        <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none" data-i18n="topbar.adminLink">Hantera användare</button>
+        <span id="userEmail" class="user-email"></span>
+        <button id="logoutBtn" class="btn btn-ghost btn-small" type="button" data-i18n="topbar.logout">Logga ut</button>
+      </div>
+      <button id="overflowBtn" type="button" class="btn btn-ghost btn-small overflow-btn" aria-label="Meny">☰</button>
       <div class="topbar-actions">
         <div class="dropdown">
           <button id="wheelsBtn" type="button" class="btn btn-ghost btn-small" data-i18n-aria-label="wheels.toggleAria" aria-label="Mina hjul"><span data-i18n="wheels.label">Hjul</span>: <span class="wheels-current"></span> ▾</button>
@@ -83,6 +90,8 @@
             <button class="dropdown-item" data-format="ics" data-i18n="topbar.exportIcs">Som kalender (.ics)</button>
           </div>
         </div>
+      </div>
+      <div class="topbar-config">
         <div class="dropdown">
           <button id="layoutBtn" type="button" class="btn btn-ghost btn-small" data-i18n-aria-label="layout.toggleAria" aria-label="Välj layout"><span data-i18n="layout.label">Layout</span> ▾</button>
           <div id="layoutMenu" class="dropdown-menu" hidden>
@@ -94,14 +103,8 @@
           <button type="button" class="lang-btn" data-lang="sv">SV</button>
           <button type="button" class="lang-btn" data-lang="en">EN</button>
         </div>
-        <div class="user-block">
-          <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none" data-i18n="topbar.adminLink">Hantera användare</a>
-          <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none" data-i18n="topbar.adminLink">Hantera användare</button>
-          <span id="userEmail" class="user-email"></span>
-          <button id="logoutBtn" class="btn btn-ghost btn-small" type="button" data-i18n="topbar.logout">Logga ut</button>
-        </div>
-        <input id="fileInput" type="file" accept="image/png" hidden />
       </div>
+      <input id="fileInput" type="file" accept="image/png" hidden />
     </div>
   </header>
 
@@ -163,6 +166,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=45" defer></script>
+  <script src="app.js?v=46" defer></script>
 </body>
 </html>

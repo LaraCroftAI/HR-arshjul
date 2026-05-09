@@ -50,12 +50,22 @@ h1, h2, h3 {
 .topbar-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 18px 28px;
+  padding: 14px 28px;
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 32px;
+  grid-template-areas:
+    "brand client user"
+    "actions actions config";
+  column-gap: 24px;
+  row-gap: 10px;
   align-items: center;
 }
+.brand { grid-area: brand; }
+.client-meta { grid-area: client; justify-self: center; }
+.user-block { grid-area: user; }
+.topbar-actions { grid-area: actions; }
+.topbar-config { grid-area: config; justify-self: end; }
+.overflow-btn { display: none; } /* mobile only */
 .brand {
   display: flex;
   align-items: center;
@@ -101,7 +111,8 @@ h1, h2, h3 {
 .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 #clientName { width: 220px; }
 #clientYear { width: 90px; }
-.topbar-actions { display: flex; gap: 10px; align-items: center; }
+.topbar-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.topbar-config { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 /* ---------- Dropdown ---------- */
 .dropdown { position: relative; display: inline-block; }
@@ -779,5 +790,59 @@ h1, h2, h3 {
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
   .wheel-area { position: static; }
-  .topbar-inner { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* Mobile: collapse the topbar into a single row + overflow menu.
+   Brand stays left; ☰ opens a flyout with everything except the brand
+   and Logga ut. Kund/År gets its own short row underneath. */
+@media (max-width: 720px) {
+  .topbar-inner {
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas:
+      "brand .   menu user"
+      "client client client client";
+    column-gap: 8px;
+    row-gap: 8px;
+    padding: 10px 14px;
+  }
+  .client-meta { justify-self: stretch; gap: 10px; }
+  .client-meta .field { flex: 1; }
+  .client-meta input { width: 100% !important; min-width: 0; }
+  .user-block { gap: 6px; padding-left: 6px; margin-left: 0; }
+  .user-block #adminLink,
+  .user-block #adminBtn,
+  .user-block .user-email { display: none; }
+  .overflow-btn { display: inline-block; grid-area: menu; }
+  .topbar-actions,
+  .topbar-config {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    flex-direction: column;
+    align-items: stretch;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    padding: 8px;
+    margin: 0 4px;
+  }
+  .topbar-actions { grid-row: 3; }
+  .topbar-config { grid-row: 4; }
+  body:not(.menu-open) .topbar-actions,
+  body:not(.menu-open) .topbar-config { display: none; }
+  body.menu-open .topbar-actions,
+  body.menu-open .topbar-config { display: flex; }
+  /* Inside the flyout, dropdowns should align left (above the trigger) */
+  body.menu-open .topbar-actions .dropdown-menu,
+  body.menu-open .topbar-config .dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: 1px solid var(--line);
+    margin-top: 4px;
+  }
+  body.menu-open .lang-toggle-topbar { align-self: flex-start; }
+  /* Stretch the action buttons to full width inside the flyout */
+  body.menu-open .topbar-actions > * { width: 100%; }
+  body.menu-open .topbar-actions .dropdown { width: 100%; }
+  body.menu-open .topbar-actions .dropdown > .btn { width: 100%; text-align: left; }
 }

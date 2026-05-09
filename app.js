@@ -532,6 +532,32 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
   btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
   btn.classList.toggle('active', btn.dataset.lang === currentLang);
 });
+// Mobile overflow menu — toggles body.menu-open which reveals the action
+// and config groups via CSS. Auto-closes when a button inside is clicked.
+(function setupOverflowMenu() {
+  const btn = $('overflowBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.body.classList.toggle('menu-open');
+  });
+  // Close when clicking outside the topbar
+  document.addEventListener('click', e => {
+    if (!document.body.classList.contains('menu-open')) return;
+    const topbar = document.querySelector('.topbar');
+    if (topbar && !topbar.contains(e.target)) {
+      document.body.classList.remove('menu-open');
+    }
+  });
+  // Close after picking an action (any button inside actions/config)
+  document.querySelectorAll('.topbar-actions button, .topbar-config button, .topbar-actions a').forEach(el => {
+    el.addEventListener('click', () => {
+      // Defer slightly so the action's own handler runs first
+      setTimeout(() => document.body.classList.remove('menu-open'), 0);
+    });
+  });
+})();
+
 // Wheels dropdown — list/switch/create/delete wheels
 (function setupWheelsDropdown() {
   const btn = $('wheelsBtn');
