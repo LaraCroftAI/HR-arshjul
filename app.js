@@ -1861,12 +1861,16 @@ async function initAuth() {
     showLoginScreen();
     return;
   }
-  // Detect a recovery URL BEFORE creating the supabase client — that way we
-  // can ignore the SIGNED_IN event that Supabase fires alongside (and before)
-  // the PASSWORD_RECOVERY event. Without this, the user lands on the app
-  // instead of the 'choose new password' screen.
-  const url = window.location.href;
-  if (/[#&?]type=recovery/i.test(url)) {
+  // Detect that the user just clicked a recovery link. We check three
+  // signals because Supabase's flow varies (PKCE uses ?code=..., implicit
+  // uses #access_token=...&type=recovery), AND email gateways like Outlook
+  // Safe Links can strip URL fragments. The ?reset=1 marker we add to
+  // redirectTo when sending the reset mail is the most reliable.
+  const search = window.location.search || '';
+  const hash = window.location.hash || '';
+  const resetParam = /[?&]reset=1\b/i.test(search);
+  const recoveryHash = /[#&]type=recovery/i.test(hash);
+  if (resetParam || recoveryHash) {
     isPasswordRecovery = true;
   }
 
@@ -1987,8 +1991,11 @@ async function handleResetRequest(email) {
   submitBtn.textContent = t('auth.reset.sending');
   showAuthMessage('', false);
   try {
+    // ?reset=1 marker survives redirect chains (incl. Outlook Safe Links that
+    // can strip URL fragments). We use it to force the 'choose new password'
+    // screen even if Supabase's own flow markers get lost on the way.
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: window.location.origin + window.location.pathname + '?reset=1',
     });
     if (error) throw error;
     showAuthMessage(t('auth.reset.sent', { email }), false);
@@ -2010,6 +2017,11 @@ async function handleNewPassword(password) {
     const { data, error } = await sb.auth.updateUser({ password });
     if (error) throw error;
     isPasswordRecovery = false;
+    // Clean the ?reset=1 (and any leftover hash) from the URL so a refresh
+    // doesn't route the user back into the new-password flow.
+    try {
+      history.replaceState(null, '', window.location.pathname);
+    } catch {}
     const user = (data && data.user) || null;
     if (user) {
       await onSignedIn(user);
