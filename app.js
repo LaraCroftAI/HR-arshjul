@@ -438,13 +438,25 @@ function rid() {
 // Wheel persistence — local-first, sync to Supabase when possible.
 // Each wheel has its own UUID (currentWheelId); a user can have many wheels.
 let saveTimer = null;
+let pendingSave = null; // { id, data } captured at queue time
 let wheels = []; // [{id, data}] for the current user
 let currentWheelId = null;
 
 function saveState() {
   saveLocal();          // immediate, reliable
+  // Capture wheel id and a snapshot of state so a fast switch doesn't
+  // accidentally save the new wheel's data to the previous wheel's row.
+  pendingSave = { id: currentWheelId, data: state };
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToSupabase, 800); // debounced remote sync
+  saveTimer = setTimeout(flushPendingSave, 800);
+}
+
+async function flushPendingSave() {
+  if (!pendingSave) return;
+  const job = pendingSave;
+  pendingSave = null;
+  saveTimer = null;
+  await saveToSupabaseFor(job.id, job.data);
 }
 
 function localKey() {
@@ -468,9 +480,8 @@ function loadLocalForId(id) {
   return null;
 }
 
-async function saveToSupabase() {
-  if (!sb || !currentUser || !currentWheelId) return;
-  // Fall back to native fetch with timeout — supabase-js was hanging silently for some setups.
+async function saveToSupabaseFor(wheelId, data) {
+  if (!sb || !currentUser || !wheelId) return;
   try {
     const sessRes = await sb.auth.getSession();
     const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
@@ -485,7 +496,7 @@ async function saveToSupabase() {
         Authorization: 'Bearer ' + token,
         Prefer: 'resolution=merge-duplicates',
       },
-      body: JSON.stringify({ id: currentWheelId, user_id: currentUser.id, data: state }),
+      body: JSON.stringify({ id: wheelId, user_id: currentUser.id, data }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);
@@ -2517,25 +2528,23 @@ function defaultWheelState() {
 }
 
 async function loadUserWheel(userId) {
-  // Build the user's list of wheels: prefer Supabase but fall back to
-  // localStorage caches (in case the network is unreliable).
+  // Local-first: localStorage always wins because remote sync can be
+  // unreliable in this user's network. Remote is only used as a starting
+  // point for wheels we don't have locally.
   const remoteList = await fetchRemoteWheels(userId);
   const localList = collectLocalWheels();
 
-  // Merge: remote ids win, plus any local-only wheels (created offline).
   const byId = new Map();
+  // Seed with remote (so wheels we've never seen locally show up)
   if (remoteList) {
     for (const r of remoteList) {
       const data = r.data && Array.isArray(r.data.rings) ? r.data : null;
       if (data) byId.set(r.id, { id: r.id, data, updated_at: r.updated_at });
     }
-    // Refresh local cache
-    for (const r of remoteList) {
-      try { localStorage.setItem(STORAGE_KEY + ':wheel:' + r.id, JSON.stringify(r.data)); } catch {}
-    }
   }
+  // Local entries override remote — recent local edits trump server state
   for (const l of localList) {
-    if (!byId.has(l.id)) byId.set(l.id, l);
+    byId.set(l.id, l);
   }
   wheels = Array.from(byId.values());
 
@@ -2594,6 +2603,12 @@ function collectLocalWheels() {
 async function switchToWheel(id, opts) {
   const w = wheels.find(x => x.id === id);
   if (!w) return;
+  // If we have a pending save for the previous wheel, flush it first so
+  // we don't accidentally drop those edits when state switches.
+  if (pendingSave && pendingSave.id !== id && saveTimer) {
+    clearTimeout(saveTimer);
+    flushPendingSave();
+  }
   currentWheelId = id;
   state = w.data;
   if (!(opts && opts.skipPersist)) {
