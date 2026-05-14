@@ -35,6 +35,18 @@ function activityPaletteColor(idx) {
   return ACTIVITY_PALETTE[idx % ACTIVITY_PALETTE.length];
 }
 
+// Returns the color an activity should render with. Priority:
+// 1) Activity's own .color if the user has set one
+// 2) Agenda layout: position-based palette color (pass agendaIdx)
+// 3) Wheel layout: the ring's color (pass ringColor)
+function effectiveActivityColor(act, ringColor, agendaIdx) {
+  if (act && act.color) return act.color;
+  if (getLayout() === 'agenda' && typeof agendaIdx === 'number') {
+    return activityPaletteColor(agendaIdx);
+  }
+  return ringColor || '#888888';
+}
+
 function getLayout() {
   return state && state.layout === 'agenda' ? 'agenda' : 'wheel';
 }
@@ -100,6 +112,8 @@ const I18N = {
     'panel.rings.namePh': 'Ringens namn',
     'panel.rings.dragHandle': 'Dra för att ändra ordning',
     'panel.rings.colorAria': 'Välj färg',
+    'panel.activities.colorAria': 'Välj färg för aktiviteten',
+    'panel.activities.resetColor': 'Återställ till standardfärg',
     'panel.rings.removeTitle': 'Ta bort',
     'panel.activities.title': 'Aktiviteter',
     'panel.activities.import': 'Importera',
@@ -252,6 +266,8 @@ const I18N = {
     'panel.rings.namePh': 'Ring name',
     'panel.rings.dragHandle': 'Drag to reorder',
     'panel.rings.colorAria': 'Choose color',
+    'panel.activities.colorAria': 'Choose color for activity',
+    'panel.activities.resetColor': 'Reset to default color',
     'panel.rings.removeTitle': 'Remove',
     'panel.activities.title': 'Activities',
     'panel.activities.import': 'Import',
@@ -698,13 +714,28 @@ function renderActivities() {
     activityList.appendChild(li);
     return;
   }
+  // For the agenda palette index lookup
+  const agendaOrder = getLayout() === 'agenda' ? orderedAgendaActivities() : null;
+  function agendaIndexFor(actId) {
+    if (!agendaOrder) return null;
+    const i = agendaOrder.findIndex(e => e.act.id === actId);
+    return i === -1 ? null : i;
+  }
   state.activities.forEach(act => {
     const li = document.createElement('li');
     li.className = 'activity-item';
     const monthLabel = weekToMonthLabel(act.startWeek);
+    const ring = state.rings.find(r => r.id === act.ringId);
+    const ringColor = ring ? ring.color : '#888';
+    const effColor = effectiveActivityColor(act, ringColor, agendaIndexFor(act.id));
+    const hasCustomColor = !!act.color;
     li.innerHTML = `
       <div class="activity-row">
+        <span class="ring-color activity-color" style="background:${effColor}">
+          <input type="color" value="${effColor}" data-id="${act.id}" class="activity-color-input" aria-label="${escapeHtml(t('panel.activities.colorAria'))}" />
+        </span>
         <input class="activity-name" type="text" value="${escapeHtml(act.name)}" data-id="${act.id}" data-field="name" placeholder="${escapeHtml(t('panel.activities.namePh'))}" />
+        <button class="btn-icon activity-color-reset" data-id="${act.id}" title="${escapeHtml(t('panel.activities.resetColor'))}" ${hasCustomColor ? '' : 'hidden'}>↺</button>
         <button class="btn-icon" data-id="${act.id}" data-action="delete-activity" title="${escapeHtml(t('panel.rings.removeTitle'))}">✕</button>
       </div>
       <div class="activity-meta">
@@ -755,6 +786,30 @@ function renderActivities() {
       saveState(); renderAll();
     });
   });
+  activityList.querySelectorAll('.activity-color-input').forEach(el => {
+    el.addEventListener('input', e => {
+      const id = e.target.dataset.id;
+      const act = state.activities.find(a => a.id === id);
+      if (!act) return;
+      act.color = e.target.value;
+      e.target.parentElement.style.background = e.target.value;
+      const resetBtn = e.target.closest('.activity-item').querySelector('.activity-color-reset');
+      if (resetBtn) resetBtn.hidden = false;
+      saveState();
+      renderWheel();
+      renderLegend();
+    });
+  });
+  activityList.querySelectorAll('.activity-color-reset').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const act = state.activities.find(a => a.id === id);
+      if (!act) return;
+      delete act.color;
+      saveState();
+      renderAll(); // re-render so the swatch picks up the new default
+    });
+  });
 }
 
 function renderActivitySelects() {
@@ -785,7 +840,9 @@ function renderLegend() {
       n++;
       const item = document.createElement('span');
       item.className = 'legend-item';
-      item.innerHTML = `<span class="legend-swatch" style="background:${activityPaletteColor(n - 1)}"></span><span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}`;
+      const ringColor = entry.ring ? entry.ring.color : '#888';
+      const color = effectiveActivityColor(entry.act, ringColor, n - 1);
+      item.innerHTML = `<span class="legend-swatch" style="background:${color}"></span><span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}`;
       legend.appendChild(item);
     });
   } else {
@@ -885,7 +942,7 @@ function renderWheel() {
       const path = arcPath(r1, r2, startAngle, endAngle);
       appendSvg('path', {
         d: path,
-        fill: ring.color,
+        fill: effectiveActivityColor(act, ring.color),
         class: 'wheel-arc',
         stroke: '#fff',
         'stroke-width': 1,
@@ -913,16 +970,17 @@ function renderWheel() {
 
     drawMonthDividers(innerR, outerR);
 
-    // Activity arcs — unique color per activity from the activity palette
+    // Activity arcs — unique color per activity (custom or from palette)
     ordered.forEach((entry, i) => {
       const r2 = outerR - i * bandThickness;
       const r1 = r2 - bandThickness;
       const startAngle = weekToAngle(entry.act.startWeek);
       const endAngle = weekToAngle(entry.act.startWeek + entry.act.lengthWeeks);
       const path = arcPath(r1, r2, startAngle, endAngle);
+      const ringColor = entry.ring ? entry.ring.color : '#888';
       appendSvg('path', {
         d: path,
-        fill: activityPaletteColor(i),
+        fill: effectiveActivityColor(entry.act, ringColor, i),
         class: 'wheel-arc',
         stroke: '#fff',
         'stroke-width': 0.5,
@@ -1613,7 +1671,8 @@ function drawPdfLegendAgenda(doc, pageW, pageH) {
     if (y > pageH - 8) return; // out of room
     doc.setFontSize(itemFs);
     doc.setFont('helvetica', 'normal');
-    const rgb = hexToRgb(activityPaletteColor(i));
+    const ringColor = entry.ring ? entry.ring.color : '#888';
+    const rgb = hexToRgb(effectiveActivityColor(entry.act, ringColor, i));
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
     doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
     doc.setTextColor(60, 70, 90);
@@ -1830,10 +1889,12 @@ function addPptLegendAgenda(slide, slideW, slideH) {
       y += lineH;
     }
     if (y > slideH - lineH) return; // out of room
+    const ringColorPpt = entry.ring ? entry.ring.color : '#888';
+    const colorHex = effectiveActivityColor(entry.act, ringColorPpt, i).replace('#', '');
     slide.addShape('rect', {
       x: xLeft, y: y + (lineH - swatch) / 2, w: swatch, h: swatch,
-      fill: { color: activityPaletteColor(i).replace('#', '') },
-      line: { color: activityPaletteColor(i).replace('#', ''), width: 0 },
+      fill: { color: colorHex },
+      line: { color: colorHex, width: 0 },
     });
     slide.addText(`${i + 1}. ${entry.act.name}`, {
       x: xLeft + swatch + 0.08, y, w: colWidth - swatch - 0.1, h: lineH,

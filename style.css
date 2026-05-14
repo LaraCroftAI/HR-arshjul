@@ -308,9 +308,13 @@ h1, h2, h3 {
 }
 .activity-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 8px;
   align-items: center;
+}
+.activity-color {
+  width: 22px;
+  height: 22px;
 }
 .activity-name {
   border: 1px solid var(--line);
