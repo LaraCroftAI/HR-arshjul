@@ -900,9 +900,41 @@ function drawMonthDividers(innerR, outerR) {
   }
 }
 
+// Draws an activity's number centered in its arc. Used when names live in
+// the side-legend (agenda mode, or classic mode with 'text på sidan' aktiverat)
+// so the user can cross-reference the wheel with the legend.
+function appendArcNumber(num, r1, r2, startAngle, endAngle) {
+  const arcThickness = (endAngle - startAngle) * (r1 + r2) / 2;
+  const radialThickness = r2 - r1;
+  // Skip if the slice is too small to fit a readable digit
+  if (arcThickness < 8 || radialThickness < 8) return;
+  const fontSize = Math.min(11, Math.max(7, Math.floor(radialThickness * 0.55)));
+  const midAngle = (startAngle + endAngle) / 2;
+  const midR = (r1 + r2) / 2;
+  appendSvg('text', {
+    x: midR * Math.cos(midAngle),
+    y: midR * Math.sin(midAngle),
+    'text-anchor': 'middle',
+    'dominant-baseline': 'central',
+    'font-size': fontSize,
+    'font-weight': 700,
+    fill: '#fff',
+    class: 'wheel-arc-num',
+  }, String(num));
+}
+
 // Builds the ordered list of activities for agenda layout: grouped by ring
 // (outermost = first ring's first activity), with orphaned activities at the
 // end. Each entry knows its display index (= ACTIVITY_PALETTE color slot).
+// Returns a Map of activity id → display number (1-based) following the
+// same ordering as renderLegend so wheel arcs and legend entries match.
+function activityNumberById() {
+  const map = new Map();
+  const ordered = orderedAgendaActivities();
+  ordered.forEach((entry, i) => map.set(entry.act.id, i + 1));
+  return map;
+}
+
 function orderedAgendaActivities() {
   const out = [];
   state.rings.forEach((ring, ringIdx) => {
@@ -999,6 +1031,7 @@ function renderWheel() {
 
     // Activity arcs placed in their assigned lane within the ring
     const showLabelsInside = getLabelPosition() !== 'side';
+    const numById = showLabelsInside ? null : activityNumberById();
     state.activities.forEach(act => {
       const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
       if (ringIdx === -1) return;
@@ -1019,6 +1052,9 @@ function renderWheel() {
       });
       if (showLabelsInside) {
         appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
+      } else {
+        const num = numById.get(act.id);
+        if (num != null) appendArcNumber(num, r1, r2, startAngle, endAngle);
       }
     });
   } else {
@@ -1042,7 +1078,8 @@ function renderWheel() {
 
     drawMonthDividers(innerR, outerR);
 
-    // Activity arcs — unique color per activity (custom or from palette)
+    // Activity arcs — unique color per activity (custom or from palette).
+    // Numbers placed in the arc center cross-reference with the side legend.
     ordered.forEach((entry, i) => {
       const r2 = outerR - i * bandThickness;
       const r1 = r2 - bandThickness;
@@ -1057,7 +1094,7 @@ function renderWheel() {
         stroke: '#fff',
         'stroke-width': 0.5,
       });
-      // Bands too thin for radial text — names live in the legend.
+      appendArcNumber(i + 1, r1, r2, startAngle, endAngle);
     });
   }
 
@@ -1595,6 +1632,7 @@ async function buildWheelPngBlob() {
       .wheel-month-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; fill: #5C6577; text-transform: uppercase; }
       .wheel-center-label { font-family: 'Fraunces', Georgia, serif; font-weight: 500; fill: #1A2332; }
       .wheel-arc-label { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 9.5px; font-weight: 500; fill: #ffffff; }
+      .wheel-arc-num { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 700; fill: #ffffff; }
     `;
     svgClone.insertBefore(styleEl, svgClone.firstChild);
 
