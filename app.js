@@ -515,6 +515,23 @@ async function saveToSupabaseFor(wheelId, data) {
     const sessRes = await sb.auth.getSession();
     const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
     if (!token) return;
+    // Try via Vercel proxy first
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const proxyRes = await fetch('/api/wheels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'save', id: wheelId, user_id: currentUser.id, data }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (proxyRes.ok) return;
+      console.warn('Wheel save via proxy got HTTP', proxyRes.status);
+    } catch (err) {
+      console.warn('Wheel save via proxy failed, trying direct:', err.message || err);
+    }
+    // Fallback: direct to Supabase
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?on_conflict=id', {
@@ -605,13 +622,34 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
   if (!btn || !menu) return;
   btn.addEventListener('click', e => {
     e.stopPropagation();
+    const opening = menu.hidden;
     refreshWheelsList();
     menu.hidden = !menu.hidden;
+    // When opening, also re-fetch from Supabase in case earlier load missed
+    // anything (e.g. wheels created from another device).
+    if (opening) refreshWheelsFromRemote();
   });
   document.addEventListener('click', e => {
     if (!menu.contains(e.target) && e.target !== btn) menu.hidden = true;
   });
 })();
+
+async function refreshWheelsFromRemote() {
+  if (!currentUser) return;
+  const remoteList = await fetchRemoteWheels(currentUser.id);
+  if (!remoteList || !Array.isArray(remoteList)) return;
+  const knownIds = new Set(wheels.map(w => w.id));
+  let added = false;
+  for (const r of remoteList) {
+    if (knownIds.has(r.id)) continue;
+    const data = r.data && Array.isArray(r.data.rings) ? r.data : null;
+    if (!data) continue;
+    wheels.push({ id: r.id, data, updated_at: r.updated_at });
+    try { localStorage.setItem(STORAGE_KEY + ':wheel:' + r.id, JSON.stringify(data)); } catch {}
+    added = true;
+  }
+  if (added) refreshWheelsList();
+}
 
 // Layout dropdown — same UX pattern as the export ("Ladda ner") dropdown
 (function setupLayoutDropdown() {
@@ -2742,6 +2780,22 @@ async function fetchRemoteWheels(userId) {
     const sessRes = await sb.auth.getSession();
     const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
     if (!token) return null;
+    // Try via Vercel proxy first (works even when REST is blocked in user's env)
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const proxyRes = await fetch('/api/wheels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'list' }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (proxyRes.ok) return await proxyRes.json();
+    } catch (err) {
+      console.warn('Wheels list via proxy failed, trying direct:', err.message || err);
+    }
+    // Fallback: direct to Supabase
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(SUPABASE_URL + '/rest/v1/wheels?select=id,data,updated_at&user_id=eq.' + encodeURIComponent(userId) + '&order=created_at.asc', {
@@ -2823,11 +2877,25 @@ async function deleteWheel(id) {
   } else {
     refreshWheelsList();
   }
-  // Remove from Supabase (best effort)
+  // Remove from Supabase (best effort) — try proxy first, then direct
   try {
     const sessRes = await sb.auth.getSession();
     const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
     if (!token) return;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const proxyRes = await fetch('/api/wheels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'delete', id }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (proxyRes.ok) return;
+    } catch (err) {
+      console.warn('Delete via proxy failed, trying direct:', err.message || err);
+    }
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     await fetch(SUPABASE_URL + '/rest/v1/wheels?id=eq.' + encodeURIComponent(id), {
