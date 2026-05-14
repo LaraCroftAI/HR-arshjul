@@ -698,6 +698,18 @@ h1, h2, h3 {
   background: var(--surface-soft);
   font-weight: 600;
 }
+.dropdown-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 8px;
+}
+.dropdown-item .check {
+  display: inline-block;
+  width: 14px;
+  color: var(--accent);
+  visibility: hidden;
+}
+.dropdown-item.is-checked .check { visibility: visible; }
 
 .dropdown-item-action {
   border-top: 1px solid var(--line);

@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=51" />
+  <link rel="stylesheet" href="style.css?v=52" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -97,6 +97,8 @@
           <div id="layoutMenu" class="dropdown-menu" hidden>
             <button type="button" class="dropdown-item layout-option" data-layout="wheel" data-i18n="layout.wheel">Klassisk</button>
             <button type="button" class="dropdown-item layout-option" data-layout="agenda" data-i18n="layout.agenda">Agenda</button>
+            <div class="dropdown-sep"></div>
+            <button type="button" class="dropdown-item label-position-option" id="labelSideToggle"><span class="check">✓</span> <span data-i18n="layout.labelSide">Text vid sidan</span></button>
           </div>
         </div>
         <div class="lang-toggle lang-toggle-topbar" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
@@ -166,6 +168,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=51" defer></script>
+  <script src="app.js?v=52" defer></script>
 </body>
 </html>

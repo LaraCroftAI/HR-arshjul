@@ -51,6 +51,17 @@ function getLayout() {
   return state && state.layout === 'agenda' ? 'agenda' : 'wheel';
 }
 
+function getLabelPosition() {
+  return state && state.labelPosition === 'side' ? 'side' : 'inside';
+}
+
+// True when activity names should appear as a side legend rather than
+// inside the wheel. Agenda always uses side legend; classic mode does too
+// when the user has flipped the 'Text vid sidan' toggle.
+function wantsSideLegend() {
+  return getLayout() === 'agenda' || getLabelPosition() === 'side';
+}
+
 // ---------- i18n ----------
 const I18N = {
   sv: {
@@ -200,6 +211,7 @@ const I18N = {
     'layout.label': 'Layout',
     'layout.wheel': 'Klassisk',
     'layout.agenda': 'Agenda',
+    'layout.labelSide': 'Text vid sidan',
     'wheels.label': 'Hjul',
     'wheels.toggleAria': 'Mina hjul',
     'wheels.new': '+ Nytt hjul',
@@ -354,6 +366,7 @@ const I18N = {
     'layout.label': 'Layout',
     'layout.wheel': 'Classic',
     'layout.agenda': 'Agenda',
+    'layout.labelSide': 'Labels on the side',
     'wheels.label': 'Wheel',
     'wheels.toggleAria': 'My wheels',
     'wheels.new': '+ New wheel',
@@ -618,16 +631,32 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
       setLayout(item.dataset.layout);
     });
   });
+  const sideToggle = $('labelSideToggle');
+  if (sideToggle) {
+    sideToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      toggleLabelPosition();
+    });
+  }
 })();
 function refreshLayoutToggle() {
   const cur = getLayout();
   document.querySelectorAll('.layout-option').forEach(b => {
     b.classList.toggle('is-current', b.dataset.layout === cur);
   });
+  const sideToggle = $('labelSideToggle');
+  if (sideToggle) sideToggle.classList.toggle('is-checked', getLabelPosition() === 'side');
 }
 function setLayout(layout) {
   if (layout !== 'wheel' && layout !== 'agenda') return;
   state.layout = layout;
+  saveState();
+  refreshLayoutToggle();
+  renderWheel();
+  renderLegend();
+}
+function toggleLabelPosition() {
+  state.labelPosition = getLabelPosition() === 'side' ? 'inside' : 'side';
   saveState();
   refreshLayoutToggle();
   renderWheel();
@@ -823,7 +852,7 @@ function renderActivitySelects() {
 
 function renderLegend() {
   legend.innerHTML = '';
-  if (getLayout() === 'agenda') {
+  if (wantsSideLegend()) {
     legend.classList.add('legend-agenda');
     let n = 0;
     const ordered = orderedAgendaActivities();
@@ -969,6 +998,7 @@ function renderWheel() {
     drawMonthDividers(innerR, outerR);
 
     // Activity arcs placed in their assigned lane within the ring
+    const showLabelsInside = getLabelPosition() !== 'side';
     state.activities.forEach(act => {
       const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
       if (ringIdx === -1) return;
@@ -987,7 +1017,9 @@ function renderWheel() {
         stroke: '#fff',
         'stroke-width': 1,
       });
-      appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
+      if (showLabelsInside) {
+        appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
+      }
     });
   } else {
     // Agenda layout — one thin band per activity, outermost = first activity
@@ -1630,7 +1662,7 @@ async function exportWheelPDF() {
     const title = (state.client || t('wheel.centerFallback')).trim();
     doc.text(`${title}  ·  ${state.year}`, pageW / 2, 13, { align: 'center' });
 
-    if (getLayout() === 'agenda') {
+    if (wantsSideLegend()) {
       // Wheel on the right, legend on the left
       const imgSize = 175;
       const wheelX = pageW - imgSize - 6;
@@ -1652,7 +1684,7 @@ async function exportWheelPDF() {
 }
 
 function drawPdfLegend(doc, pageW, pageH) {
-  if (getLayout() === 'agenda') {
+  if (wantsSideLegend()) {
     drawPdfLegendAgenda(doc, pageW, pageH);
     return;
   }
@@ -1744,7 +1776,7 @@ async function exportWheelPPT() {
       align: 'center', valign: 'middle', bold: false,
     });
 
-    if (getLayout() === 'agenda') {
+    if (wantsSideLegend()) {
       // Wheel on the right, legend on the left
       const imgSize = 6.45;
       slide.addImage({
