@@ -912,14 +912,52 @@ function renderWheel() {
 
   if (layout === 'wheel') {
     const ringCount = state.rings.length;
-    const ringThickness = (outerR - innerR) / ringCount;
-    // Convention: list index 0 = top of list = OUTERMOST ring on the wheel.
-    const posFromCenter = (listIdx) => ringCount - 1 - listIdx;
+    // Lane-packing per ring: each ring is split into as many parallel lanes
+    // as needed so overlapping activities don't sit on top of each other.
+    // A ring's thickness is proportional to its lane count, so peaceful
+    // rings stay roomy while busy rings expand only where needed.
+    const lanesByRing = state.rings.map(ring => {
+      const acts = state.activities
+        .filter(a => a.ringId === ring.id)
+        .slice()
+        .sort((a, b) => a.startWeek - b.startWeek);
+      const lastEndPerLane = []; // lane i -> last activity's end week
+      const laneOf = new Map(); // act.id -> lane index
+      for (const act of acts) {
+        const startW = act.startWeek;
+        const endW = startW + act.lengthWeeks;
+        let assigned = -1;
+        for (let li = 0; li < lastEndPerLane.length; li++) {
+          if (startW >= lastEndPerLane[li]) { assigned = li; break; }
+        }
+        if (assigned === -1) {
+          assigned = lastEndPerLane.length;
+          lastEndPerLane.push(endW);
+        } else {
+          lastEndPerLane[assigned] = endW;
+        }
+        laneOf.set(act.id, assigned);
+      }
+      return { laneCount: Math.max(1, lastEndPerLane.length), laneOf };
+    });
+    const totalLanes = lanesByRing.reduce((s, x) => s + x.laneCount, 0);
+    const laneThickness = (outerR - innerR) / totalLanes;
 
+    // Compute each ring's [r1, r2] in radii.
+    // Convention: list index 0 = OUTERMOST. Build from innermost outwards.
+    const ringRadii = new Array(ringCount);
+    let cumLanes = 0;
+    for (let i = ringCount - 1; i >= 0; i--) {
+      const lanes = lanesByRing[i].laneCount;
+      const r1 = innerR + cumLanes * laneThickness;
+      const r2 = r1 + lanes * laneThickness;
+      ringRadii[i] = [r1, r2];
+      cumLanes += lanes;
+    }
+
+    // Background band per ring (spans all its lanes — one cohesive category)
     state.rings.forEach((ring, i) => {
-      const pos = posFromCenter(i);
-      const r1 = innerR + pos * ringThickness;
-      const r2 = r1 + ringThickness;
+      const [r1, r2] = ringRadii[i];
       appendSvg('path', {
         d: ringBandPath(r1, r2),
         fill: lightenColor(ring.color, 0.92),
@@ -930,13 +968,15 @@ function renderWheel() {
 
     drawMonthDividers(innerR, outerR);
 
+    // Activity arcs placed in their assigned lane within the ring
     state.activities.forEach(act => {
       const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
       if (ringIdx === -1) return;
       const ring = state.rings[ringIdx];
-      const pos = posFromCenter(ringIdx);
-      const r1 = innerR + pos * ringThickness;
-      const r2 = r1 + ringThickness;
+      const [ringR1] = ringRadii[ringIdx];
+      const laneIdx = lanesByRing[ringIdx].laneOf.get(act.id) || 0;
+      const r1 = ringR1 + laneIdx * laneThickness;
+      const r2 = r1 + laneThickness;
       const startAngle = weekToAngle(act.startWeek);
       const endAngle = weekToAngle(act.startWeek + act.lengthWeeks);
       const path = arcPath(r1, r2, startAngle, endAngle);
