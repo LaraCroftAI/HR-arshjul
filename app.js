@@ -2737,6 +2737,9 @@ function defaultWheelState() {
 }
 
 async function loadUserWheel(userId) {
+  // Migrate the user's old single-wheel-per-user localStorage entry to the
+  // new multi-wheel format on first load after the schema change.
+  migrateOldLocalWheelForUser(userId);
   // Local-first: localStorage always wins because remote sync can be
   // unreliable in this user's network. Remote is only used as a starting
   // point for wheels we don't have locally.
@@ -2808,6 +2811,26 @@ async function fetchRemoteWheels(userId) {
     console.warn('Wheels list fetch failed:', err.message || err);
   }
   return null;
+}
+
+// Old format (pre multi-wheel): localStorage[hr-arshjul-v1:<userId>] = state.
+// On first load after the multi-wheel migration, move that data into the
+// new format (hr-arshjul-v1:wheel:<uuid>) so it shows up in the dropdown.
+function migrateOldLocalWheelForUser(userId) {
+  if (!userId) return;
+  const oldKey = STORAGE_KEY + ':' + userId;
+  let raw;
+  try { raw = localStorage.getItem(oldKey); } catch { return; }
+  if (!raw) return;
+  let data;
+  try { data = JSON.parse(raw); } catch { return; }
+  if (!data || !Array.isArray(data.rings)) return;
+  const newId = newWheelId();
+  try {
+    localStorage.setItem(STORAGE_KEY + ':wheel:' + newId, raw);
+    localStorage.removeItem(oldKey);
+    console.info('Migrated old wheel for user', userId, '→ new id', newId);
+  } catch {}
 }
 
 function collectLocalWheels() {
