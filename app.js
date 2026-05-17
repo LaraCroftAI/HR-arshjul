@@ -2484,6 +2484,201 @@ async function runAdminDiagnostic() {
   alert(log.join('\n'));
 }
 
+// ---------- Wheel diagnostic (visible for all signed-in users) ----------
+// End-user-friendly substitute for opening DevTools. Tests the full save/load
+// chain — localStorage, Vercel proxy, direct Supabase — and dumps a copyable
+// report. Temporary: remove once the save bug is understood and fixed.
+(function setupDiagModal() {
+  const btn = $('diagBtn');
+  const modal = $('diagModal');
+  if (!btn || !modal) return;
+
+  btn.addEventListener('click', () => {
+    modal.hidden = false;
+    $('diagOutput').value = '';
+  });
+  $('diagCloseBtn').addEventListener('click', () => { modal.hidden = true; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
+
+  $('diagRunBtn').addEventListener('click', async () => {
+    const runBtn = $('diagRunBtn');
+    const out = $('diagOutput');
+    runBtn.disabled = true;
+    out.value = 'Kör test...\n';
+    try {
+      out.value = await runWheelDiagnostic();
+    } catch (err) {
+      out.value = 'Diagnostiken kraschade: ' + (err.message || err) + '\n\n' + (err.stack || '');
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
+
+  $('diagCopyBtn').addEventListener('click', async () => {
+    const out = $('diagOutput');
+    try {
+      await navigator.clipboard.writeText(out.value);
+      const btn = $('diagCopyBtn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Kopierat';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch {
+      // Fallback: select the textarea so user can ctrl+c
+      out.focus();
+      out.select();
+    }
+  });
+})();
+
+async function runWheelDiagnostic() {
+  const lines = [
+    '== HR Årshjul Diagnostik ==',
+    'Tid: ' + new Date().toISOString(),
+    'URL: ' + window.location.href,
+    'UA: ' + navigator.userAgent.slice(0, 140),
+    'navigator.onLine: ' + navigator.onLine,
+    '',
+  ];
+
+  lines.push('-- Användare --');
+  lines.push('email: ' + (currentUser && currentUser.email));
+  lines.push('user_id: ' + (currentUser && currentUser.id));
+  let token = null;
+  try {
+    const sessRes = await sb.auth.getSession();
+    const sess = sessRes && sessRes.data && sessRes.data.session;
+    token = sess && sess.access_token;
+    lines.push('session: ' + (sess ? 'aktiv' : 'SAKNAS'));
+    if (sess && sess.expires_at) {
+      lines.push('  expires_at: ' + new Date(sess.expires_at * 1000).toISOString());
+    }
+  } catch (err) {
+    lines.push('session-fel: ' + (err.message || err));
+  }
+  lines.push('');
+
+  lines.push('-- I minnet --');
+  lines.push('wheels.length: ' + wheels.length);
+  lines.push('currentWheelId: ' + currentWheelId);
+  for (const w of wheels) {
+    const c = (w.data && w.data.client) || '(tom)';
+    const r = (w.data && w.data.rings || []).length;
+    const a = (w.data && w.data.activities || []).length;
+    const cur = w.id === currentWheelId ? ' [AKTIV]' : '';
+    lines.push('  ' + w.id + cur + ' — client="' + c + '", rings=' + r + ', activities=' + a);
+  }
+  lines.push('');
+
+  lines.push('-- LocalStorage (hr-arshjul-*) --');
+  const lsKeys = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(STORAGE_KEY)) lsKeys.push(k);
+    }
+  } catch (e) {
+    lines.push('  (kunde inte räkna upp localStorage: ' + (e.message || e) + ')');
+  }
+  lsKeys.sort();
+  if (lsKeys.length === 0) lines.push('  (ingen hr-arshjul-data hittades — det är troligen själva felet)');
+  for (const k of lsKeys) {
+    try {
+      const raw = localStorage.getItem(k);
+      const size = raw ? raw.length : 0;
+      let summary = size + ' bytes';
+      try {
+        const j = JSON.parse(raw);
+        if (j && Array.isArray(j.rings)) {
+          summary += ' — client="' + (j.client || '(tom)') + '", rings=' + j.rings.length + ', activities=' + ((j.activities || []).length);
+        } else if (typeof raw === 'string' && raw.length < 80) {
+          summary += ' — value="' + raw + '"';
+        }
+      } catch {
+        if (typeof raw === 'string' && raw.length < 80) summary += ' — value="' + raw + '"';
+      }
+      lines.push('  ' + k + ' = ' + summary);
+    } catch (e) {
+      lines.push('  ' + k + ' = (fel: ' + (e.message || e) + ')');
+    }
+  }
+  lines.push('');
+
+  lines.push('-- LocalStorage roundtrip --');
+  try {
+    const probeKey = STORAGE_KEY + ':__diag__';
+    const probeVal = 'probe-' + Date.now();
+    localStorage.setItem(probeKey, probeVal);
+    const got = localStorage.getItem(probeKey);
+    localStorage.removeItem(probeKey);
+    lines.push(got === probeVal ? '  OK (write/read/remove fungerar)' : '  FAIL: skrev "' + probeVal + '" men läste "' + got + '"');
+  } catch (e) {
+    lines.push('  FAIL: ' + (e.message || e));
+  }
+  lines.push('');
+
+  if (!token) {
+    lines.push('Avbryter nätverkstester — ingen session.');
+    return lines.join('\n');
+  }
+
+  lines.push('-- /api/wheels list (Vercel-proxy) --');
+  await diagTimedFetch(lines, '  ', '/api/wheels', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ action: 'list' }),
+  });
+  lines.push('');
+
+  lines.push('-- Direkt Supabase GET wheels --');
+  await diagTimedFetch(lines, '  ', SUPABASE_URL + '/rest/v1/wheels?select=id,updated_at&user_id=eq.' + encodeURIComponent(currentUser.id), {
+    headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
+  });
+  lines.push('');
+
+  const testId = newWheelId();
+  const testData = { client: '__DIAG_TEST__', year: 2026, layout: 'wheel', rings: [], activities: [] };
+
+  lines.push('-- /api/wheels save test-hjul ' + testId.slice(0, 8) + ' (proxy) --');
+  await diagTimedFetch(lines, '  ', '/api/wheels', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ action: 'save', id: testId, user_id: currentUser.id, data: testData }),
+  });
+  lines.push('');
+
+  lines.push('-- Verifiera test-hjul finns (direkt GET) --');
+  await diagTimedFetch(lines, '  ', SUPABASE_URL + '/rest/v1/wheels?select=id&id=eq.' + encodeURIComponent(testId), {
+    headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
+  });
+  lines.push('');
+
+  lines.push('-- Städa upp test-hjul (proxy delete) --');
+  await diagTimedFetch(lines, '  ', '/api/wheels', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ action: 'delete', id: testId }),
+  });
+
+  return lines.join('\n');
+}
+
+async function diagTimedFetch(lines, prefix, url, opts) {
+  const t0 = Date.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+    clearTimeout(timer);
+    const ms = Date.now() - t0;
+    const text = (await res.text()).slice(0, 400);
+    lines.push(prefix + 'HTTP ' + res.status + ' på ' + ms + 'ms');
+    lines.push(prefix + 'body: ' + text);
+  } catch (err) {
+    const ms = Date.now() - t0;
+    lines.push(prefix + 'FEL på ' + ms + 'ms - ' + (err.name || '') + ': ' + (err.message || err));
+  }
+}
+
 // ---------- Admin (allowlist) UI ----------
 async function openAdminModal() {
   $('adminModal').hidden = false;
