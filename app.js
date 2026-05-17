@@ -2503,19 +2503,19 @@ async function runAdminDiagnostic() {
   $('diagRunBtn').addEventListener('click', async () => {
     const runBtn = $('diagRunBtn');
     const out = $('diagOutput');
-    // Multi-channel feedback so we ALWAYS see something happen:
-    // textarea, console.log, AND a visible label change. If any one
-    // breaks silently the others still surface the state.
     runBtn.disabled = true;
     runBtn.textContent = 'Kör...';
     out.value = 'Kör test... (startade ' + new Date().toLocaleTimeString() + ')\n';
     console.log('[diag] startar runWheelDiagnostic');
+    // Progress writer the diagnostic can call between steps so a hang
+    // in one step doesn't hide all the progress we've already made.
+    const writeProgress = (lines) => { out.value = lines.join('\n'); };
     try {
-      const text = await runWheelDiagnostic();
+      const text = await runWheelDiagnostic(writeProgress);
       out.value = text;
       console.log('[diag] klar, ' + text.length + ' tecken');
     } catch (err) {
-      const msg = 'Diagnostiken kraschade: ' + (err.message || err) + '\n\n' + (err.stack || '');
+      const msg = (out.value || '') + '\n\nDiagnostiken kraschade: ' + (err.message || err) + '\n\n' + (err.stack || '');
       out.value = msg;
       console.error('[diag] kraschade:', err);
       alert('Diagnostiken kraschade — se modalen för detaljer.\n\n' + (err.message || err));
@@ -2541,7 +2541,7 @@ async function runAdminDiagnostic() {
   });
 })();
 
-async function runWheelDiagnostic() {
+async function runWheelDiagnostic(writeProgress) {
   const lines = [
     '== HR Årshjul Diagnostik ==',
     'Tid: ' + new Date().toISOString(),
@@ -2550,16 +2550,26 @@ async function runWheelDiagnostic() {
     'navigator.onLine: ' + navigator.onLine,
     '',
   ];
+  const flush = () => { if (writeProgress) try { writeProgress(lines); } catch {} };
+  flush();
 
   lines.push('-- Användare --');
   lines.push('email: ' + (currentUser && currentUser.email));
   lines.push('user_id: ' + (currentUser && currentUser.id));
+  lines.push('sb defined: ' + (sb ? 'ja' : 'NEJ'));
+  flush();
+
+  // Race getSession against a 5s timeout so a hung supabase-js doesn't
+  // freeze the entire diagnostic.
   let token = null;
   try {
-    const sessRes = await sb.auth.getSession();
+    const t0 = Date.now();
+    const sessPromise = sb ? sb.auth.getSession() : Promise.reject(new Error('sb saknas'));
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout efter 5s')), 5000));
+    const sessRes = await Promise.race([sessPromise, timeoutPromise]);
     const sess = sessRes && sessRes.data && sessRes.data.session;
     token = sess && sess.access_token;
-    lines.push('session: ' + (sess ? 'aktiv' : 'SAKNAS'));
+    lines.push('session: ' + (sess ? 'aktiv' : 'SAKNAS') + ' (på ' + (Date.now() - t0) + 'ms)');
     if (sess && sess.expires_at) {
       lines.push('  expires_at: ' + new Date(sess.expires_at * 1000).toISOString());
     }
@@ -2567,6 +2577,7 @@ async function runWheelDiagnostic() {
     lines.push('session-fel: ' + (err.message || err));
   }
   lines.push('');
+  flush();
 
   lines.push('-- I minnet --');
   lines.push('wheels.length: ' + wheels.length);
@@ -2579,6 +2590,7 @@ async function runWheelDiagnostic() {
     lines.push('  ' + w.id + cur + ' — client="' + c + '", rings=' + r + ', activities=' + a);
   }
   lines.push('');
+  flush();
 
   lines.push('-- LocalStorage (hr-arshjul-*) --');
   const lsKeys = [];
@@ -2626,49 +2638,61 @@ async function runWheelDiagnostic() {
     lines.push('  FAIL: ' + (e.message || e));
   }
   lines.push('');
+  flush();
 
   if (!token) {
     lines.push('Avbryter nätverkstester — ingen session.');
+    flush();
     return lines.join('\n');
   }
 
   lines.push('-- /api/wheels list (Vercel-proxy) --');
+  flush();
   await diagTimedFetch(lines, '  ', '/api/wheels', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ action: 'list' }),
   });
   lines.push('');
+  flush();
 
   lines.push('-- Direkt Supabase GET wheels --');
+  flush();
   await diagTimedFetch(lines, '  ', SUPABASE_URL + '/rest/v1/wheels?select=id,updated_at&user_id=eq.' + encodeURIComponent(currentUser.id), {
     headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
   });
   lines.push('');
+  flush();
 
   const testId = newWheelId();
   const testData = { client: '__DIAG_TEST__', year: 2026, layout: 'wheel', rings: [], activities: [] };
 
   lines.push('-- /api/wheels save test-hjul ' + testId.slice(0, 8) + ' (proxy) --');
+  flush();
   await diagTimedFetch(lines, '  ', '/api/wheels', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ action: 'save', id: testId, user_id: currentUser.id, data: testData }),
   });
   lines.push('');
+  flush();
 
   lines.push('-- Verifiera test-hjul finns (direkt GET) --');
+  flush();
   await diagTimedFetch(lines, '  ', SUPABASE_URL + '/rest/v1/wheels?select=id&id=eq.' + encodeURIComponent(testId), {
     headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token },
   });
   lines.push('');
+  flush();
 
   lines.push('-- Städa upp test-hjul (proxy delete) --');
+  flush();
   await diagTimedFetch(lines, '  ', '/api/wheels', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ action: 'delete', id: testId }),
   });
+  flush();
 
   return lines.join('\n');
 }
