@@ -2503,14 +2503,25 @@ async function runAdminDiagnostic() {
   $('diagRunBtn').addEventListener('click', async () => {
     const runBtn = $('diagRunBtn');
     const out = $('diagOutput');
+    // Multi-channel feedback so we ALWAYS see something happen:
+    // textarea, console.log, AND a visible label change. If any one
+    // breaks silently the others still surface the state.
     runBtn.disabled = true;
-    out.value = 'Kör test...\n';
+    runBtn.textContent = 'Kör...';
+    out.value = 'Kör test... (startade ' + new Date().toLocaleTimeString() + ')\n';
+    console.log('[diag] startar runWheelDiagnostic');
     try {
-      out.value = await runWheelDiagnostic();
+      const text = await runWheelDiagnostic();
+      out.value = text;
+      console.log('[diag] klar, ' + text.length + ' tecken');
     } catch (err) {
-      out.value = 'Diagnostiken kraschade: ' + (err.message || err) + '\n\n' + (err.stack || '');
+      const msg = 'Diagnostiken kraschade: ' + (err.message || err) + '\n\n' + (err.stack || '');
+      out.value = msg;
+      console.error('[diag] kraschade:', err);
+      alert('Diagnostiken kraschade — se modalen för detaljer.\n\n' + (err.message || err));
     } finally {
       runBtn.disabled = false;
+      runBtn.textContent = 'Kör testet';
     }
   });
 
