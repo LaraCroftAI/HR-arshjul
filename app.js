@@ -471,6 +471,45 @@ let pendingSave = null; // { id, data } captured at queue time
 let wheels = []; // [{id, data}] for the current user
 let currentWheelId = null;
 
+// In Lara's environment sb.auth.getSession() sometimes hangs indefinitely
+// (most likely an internal token-refresh fetch that never returns through
+// her network). When it hangs, every fetch path that awaits it freezes
+// too — loadUserWheel never fills `wheels`, saveToSupabaseFor never sends
+// the row. Read the token directly from localStorage instead; supabase-js
+// stores it under sb-<projectref>-auth-token in a stable shape.
+function getStoredAccessToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('sb-') || !k.endsWith('-auth-token')) continue;
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const obj = JSON.parse(raw);
+      const t = obj && (obj.access_token || (obj.currentSession && obj.currentSession.access_token));
+      if (t) return t;
+    }
+  } catch {}
+  return null;
+}
+
+// Token getter that won't hang: instant localStorage read first, then
+// fall back to a race-against-timeout getSession() only if storage was
+// empty (e.g. immediately after login before supabase-js wrote it).
+async function getAccessToken() {
+  const stored = getStoredAccessToken();
+  if (stored) return stored;
+  if (!sb) return null;
+  try {
+    const sessRes = await Promise.race([
+      sb.auth.getSession(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 3000)),
+    ]);
+    return (sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token) || null;
+  } catch {
+    return null;
+  }
+}
+
 function saveState() {
   saveLocal();          // immediate, reliable
   // Capture wheel id and a snapshot of state so a fast switch doesn't
@@ -512,8 +551,7 @@ function loadLocalForId(id) {
 async function saveToSupabaseFor(wheelId, data) {
   if (!sb || !currentUser || !wheelId) return;
   try {
-    const sessRes = await sb.auth.getSession();
-    const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+    const token = await getAccessToken();
     if (!token) return;
     // Try via Vercel proxy first
     try {
@@ -2737,8 +2775,7 @@ function showAdminMessage(text, isError) {
 // Anropa vår egen Vercel serverless-funktion som vidarebefordrar till Supabase.
 // Bypass:ar vad som än blockerar direkta supabase.co-anrop i Lara's miljö.
 async function callAdminApi(action, extra) {
-  const sessRes = await sb.auth.getSession();
-  const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+  const token = await getAccessToken();
   if (!token) throw new Error('Ingen aktiv session — logga ut och in igen.');
 
   const ctrl = new AbortController();
@@ -3010,8 +3047,7 @@ async function loadUserWheel(userId) {
 async function fetchRemoteWheels(userId) {
   if (!sb) return null;
   try {
-    const sessRes = await sb.auth.getSession();
-    const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+    const token = await getAccessToken();
     if (!token) return null;
     // Try via Vercel proxy first (works even when REST is blocked in user's env)
     try {
@@ -3132,8 +3168,7 @@ async function deleteWheel(id) {
   }
   // Remove from Supabase (best effort) — try proxy first, then direct
   try {
-    const sessRes = await sb.auth.getSession();
-    const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+    const token = await getAccessToken();
     if (!token) return;
     try {
       const ctrl = new AbortController();
