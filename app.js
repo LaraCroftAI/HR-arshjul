@@ -615,6 +615,7 @@ $('downloadTemplateLink').addEventListener('click', e => {
   downloadActivitiesTemplate();
 });
 setupRingDragAndDrop();
+setupActivityDragAndDrop();
 $('newBtn').addEventListener('click', () => {
   createNewWheel();
 });
@@ -829,6 +830,8 @@ function renderActivities() {
   state.activities.forEach(act => {
     const li = document.createElement('li');
     li.className = 'activity-item';
+    li.draggable = true;
+    li.dataset.activityId = act.id;
     const monthLabel = weekToMonthLabel(act.startWeek);
     const ring = state.rings.find(r => r.id === act.ringId);
     const ringColor = ring ? ring.color : '#888';
@@ -836,6 +839,7 @@ function renderActivities() {
     const hasCustomColor = !!act.color;
     li.innerHTML = `
       <div class="activity-row">
+        <span class="ring-handle activity-handle" title="${escapeHtml(t('panel.rings.dragHandle'))}" aria-label="${escapeHtml(t('panel.rings.dragHandle'))}">⋮⋮</span>
         <span class="ring-color activity-color" style="background:${effColor}">
           <input type="color" value="${effColor}" data-id="${act.id}" class="activity-color-input" aria-label="${escapeHtml(t('panel.activities.colorAria'))}" />
         </span>
@@ -1627,6 +1631,71 @@ function setupRingDragAndDrop() {
 
   function clearDropMarkers() {
     ringList.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+  }
+}
+
+// ---------- Drag-and-drop reorder of activities (same pattern as rings) ----------
+let draggedActivityId = null;
+
+function setupActivityDragAndDrop() {
+  activityList.addEventListener('dragstart', e => {
+    const item = e.target.closest('.activity-item');
+    if (!item) return;
+    draggedActivityId = item.dataset.activityId;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    // Firefox needs some data set to start a drag
+    try { e.dataTransfer.setData('text/plain', draggedActivityId); } catch {}
+  });
+
+  activityList.addEventListener('dragover', e => {
+    if (!draggedActivityId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const item = e.target.closest('.activity-item');
+    clearDropMarkers();
+    if (!item || item.dataset.activityId === draggedActivityId) return;
+    const rect = item.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    item.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+
+  activityList.addEventListener('drop', e => {
+    if (!draggedActivityId) return;
+    e.preventDefault();
+    const item = e.target.closest('.activity-item');
+    clearDropMarkers();
+    if (!item || item.dataset.activityId === draggedActivityId) {
+      draggedActivityId = null;
+      return;
+    }
+    const targetId = item.dataset.activityId;
+    const rect = item.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+
+    const draggedIdx = state.activities.findIndex(a => a.id === draggedActivityId);
+    if (draggedIdx === -1) { draggedActivityId = null; return; }
+    const [moved] = state.activities.splice(draggedIdx, 1);
+
+    let targetIdx = state.activities.findIndex(a => a.id === targetId);
+    if (after) targetIdx += 1;
+    state.activities.splice(targetIdx, 0, moved);
+
+    draggedActivityId = null;
+    saveState();
+    renderAll();
+  });
+
+  activityList.addEventListener('dragend', () => {
+    clearDropMarkers();
+    activityList.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    draggedActivityId = null;
+  });
+
+  function clearDropMarkers() {
+    activityList.querySelectorAll('.drop-before, .drop-after').forEach(el => {
       el.classList.remove('drop-before', 'drop-after');
     });
   }

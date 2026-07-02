@@ -305,10 +305,15 @@ h1, h2, h3 {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
+  position: relative;
+  transition: opacity 120ms;
 }
+.activity-item.dragging { opacity: 0.4; }
+.activity-item.drop-before { box-shadow: 0 -2px 0 var(--accent); }
+.activity-item.drop-after  { box-shadow: 0  2px 0 var(--accent); }
 .activity-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto auto 1fr auto auto;
   gap: 8px;
   align-items: center;
 }
