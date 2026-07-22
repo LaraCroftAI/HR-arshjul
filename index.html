@@ -11,7 +11,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=61" />
+  <link rel="stylesheet" href="style.css?v=62" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -127,10 +127,11 @@
           <h2 data-i18n="panel.activities.title">Aktiviteter</h2>
           <div class="section-actions">
             <button id="importActivitiesBtn" class="btn btn-small" data-i18n="panel.activities.import">Importera</button>
-            <button id="addActivityBtn" class="btn btn-small" data-i18n="panel.activities.add">+ Lägg till</button>
+            <button id="addActivityBtn" class="btn btn-small" data-i18n="panel.activities.add">+ Period</button>
+            <button id="addDayBtn" class="btn btn-small" data-i18n="panel.activities.addDay">+ Dag</button>
           </div>
         </div>
-        <p class="hint"><span data-i18n="panel.activities.hintBefore">Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? </span><a href="#" id="downloadTemplateLink" data-i18n="panel.activities.hintLink">Hämta mallen</a><span data-i18n="panel.activities.hintAfter">.</span></p>
+        <p class="hint"><span data-i18n="panel.activities.hintBefore">Lägg in aktiviteten som en period (startvecka + längd) eller som en enskild dag med ett bestämt datum. Vill du importera en lista? </span><a href="#" id="downloadTemplateLink" data-i18n="panel.activities.hintLink">Hämta mallen</a><span data-i18n="panel.activities.hintAfter">.</span></p>
         <input id="activitiesFileInput" type="file" accept=".xlsx,.xls,.csv" hidden />
         <ul id="activityList" class="activity-list"></ul>
       </div>
@@ -169,6 +170,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=61" defer></script>
+  <script src="app.js?v=62" defer></script>
 </body>
 </html>

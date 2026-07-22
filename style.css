@@ -233,7 +233,7 @@ h1, h2, h3 {
   text-underline-offset: 2px;
 }
 .hint a:hover { color: var(--accent); }
-.section-actions { display: flex; gap: 6px; }
+.section-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ---------- Ring list ---------- */
 .ring-list, .activity-list {
@@ -333,9 +333,18 @@ h1, h2, h3 {
 .activity-name:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
 .activity-meta {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  grid-template-columns: 0.85fr 1.15fr 0.7fr 0.7fr;
   gap: 6px;
   align-items: end;
+}
+/* Single-day activities swap start week + length for one date field */
+.activity-meta.is-milestone {
+  grid-template-columns: 0.85fr 1.15fr 1.4fr;
+}
+.activity-when {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 2px;
 }
 .mini-field label {
   white-space: nowrap;
@@ -442,6 +451,28 @@ h1, h2, h3 {
   width: 14px;
   height: 14px;
   border-radius: 3px;
+}
+/* Single days are dots on the wheel — mirror that shape in the legend.
+   Slightly smaller than the square swatch so the two read as equal weight. */
+.legend-swatch-milestone {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+.legend-when {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+/* Force the single-day group onto its own row in the wrapping ring legend */
+.legend-milestone-heading {
+  flex-basis: 100%;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin-bottom: -4px;
 }
 
 /* Agenda-layout legend: grouped per ring with headings; left-aligned list */

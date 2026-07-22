@@ -66,6 +66,7 @@ function wantsSideLegend() {
 const I18N = {
   sv: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'],
+    weekdays: ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'],
     'auth.signin.title': 'Logga in',
     'auth.signin.sub': 'Logga in med din e-post och ditt lösenord.',
     'auth.signin.submit': 'Logga in',
@@ -128,8 +129,9 @@ const I18N = {
     'panel.rings.removeTitle': 'Ta bort',
     'panel.activities.title': 'Aktiviteter',
     'panel.activities.import': 'Importera',
-    'panel.activities.add': '+ Lägg till',
-    'panel.activities.hintBefore': 'Välj ring, startvecka (1–52) och hur många veckor aktiviteten pågår. Vill du importera en lista? ',
+    'panel.activities.add': '+ Period',
+    'panel.activities.addDay': '+ Dag',
+    'panel.activities.hintBefore': 'Lägg in aktiviteten som en period (startvecka + längd) eller som en enskild dag med ett bestämt datum. Vill du importera en lista? ',
     'panel.activities.hintLink': 'Hämta mallen',
     'panel.activities.hintAfter': '.',
     'panel.activities.empty': 'Inga aktiviteter än. Klicka "+ Lägg till aktivitet".',
@@ -138,6 +140,11 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Startvecka',
     'panel.activities.length': 'Längd v.',
+    'panel.activities.type': 'Typ',
+    'panel.activities.typeSpan': 'Period',
+    'panel.activities.typeMilestone': 'Dag',
+    'panel.activities.date': 'Datum',
+    'legend.milestones': 'Dagar',
     'brand.name': 'HR Årshjul',
     'wheel.aria': 'HR årshjul',
     'wheel.centerFallback': 'Årshjul',
@@ -185,11 +192,16 @@ const I18N = {
     'default.activity.succession': 'Successionsplan',
     'default.ring.new': 'Ny ring',
     'default.activity.new': 'Ny aktivitet',
+    'default.activity.newDay': 'Ny dag',
     'default.ring.general': 'Allmänt',
     'template.headerActivity': 'Aktivitet',
     'template.headerRing': 'Ring',
     'template.headerStartWeek': 'Startvecka',
     'template.headerLength': 'Längd (veckor)',
+    'template.headerType': 'Typ',
+    'template.headerDate': 'Datum',
+    'template.typeSpan': 'Period',
+    'template.typeMilestone': 'Dag',
     'template.sheetName': 'Aktiviteter',
     'template.fileName': 'arshjul-mall.xlsx',
     'admin.title': 'Hantera användare',
@@ -221,6 +233,7 @@ const I18N = {
   },
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     'auth.signin.title': 'Sign in',
     'auth.signin.sub': 'Sign in with your email and password.',
     'auth.signin.submit': 'Sign in',
@@ -283,8 +296,9 @@ const I18N = {
     'panel.rings.removeTitle': 'Remove',
     'panel.activities.title': 'Activities',
     'panel.activities.import': 'Import',
-    'panel.activities.add': '+ Add',
-    'panel.activities.hintBefore': 'Choose a ring, start week (1–52) and how many weeks the activity runs. Want to import a list? ',
+    'panel.activities.add': '+ Period',
+    'panel.activities.addDay': '+ Day',
+    'panel.activities.hintBefore': 'Add the activity as a period (start week + length) or as a single day with a specific date. Want to import a list? ',
     'panel.activities.hintLink': 'Download the template',
     'panel.activities.hintAfter': '.',
     'panel.activities.empty': 'No activities yet. Click "+ Add activity".',
@@ -293,6 +307,11 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Start week',
     'panel.activities.length': 'Length w.',
+    'panel.activities.type': 'Type',
+    'panel.activities.typeSpan': 'Period',
+    'panel.activities.typeMilestone': 'Day',
+    'panel.activities.date': 'Date',
+    'legend.milestones': 'Days',
     'brand.name': 'HR Annual Agenda',
     'wheel.aria': 'HR year wheel',
     'wheel.centerFallback': 'Year wheel',
@@ -340,11 +359,16 @@ const I18N = {
     'default.activity.succession': 'Succession planning',
     'default.ring.new': 'New ring',
     'default.activity.new': 'New activity',
+    'default.activity.newDay': 'New day',
     'default.ring.general': 'General',
     'template.headerActivity': 'Activity',
     'template.headerRing': 'Ring',
     'template.headerStartWeek': 'Start week',
     'template.headerLength': 'Length (weeks)',
+    'template.headerType': 'Type',
+    'template.headerDate': 'Date',
+    'template.typeSpan': 'Period',
+    'template.typeMilestone': 'Day',
     'template.sheetName': 'Activities',
     'template.fileName': 'year-wheel-template.xlsx',
     'admin.title': 'Manage users',
@@ -394,6 +418,12 @@ function t(key, vars) {
 function monthName(idx) {
   const m = (I18N[currentLang] || I18N.sv).months;
   return m[idx];
+}
+
+// idx follows ISO weekday order: 0 = Monday .. 6 = Sunday
+function weekdayName(idx) {
+  const w = (I18N[currentLang] || I18N.sv).weekdays;
+  return w[idx];
 }
 
 function applyI18n() {
@@ -608,6 +638,7 @@ clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.
 
 $('addRingBtn').addEventListener('click', addRing);
 $('addActivityBtn').addEventListener('click', addActivity);
+$('addDayBtn').addEventListener('click', addDayActivity);
 $('importActivitiesBtn').addEventListener('click', () => $('activitiesFileInput').click());
 $('activitiesFileInput').addEventListener('change', handleActivitiesImport);
 $('downloadTemplateLink').addEventListener('click', e => {
@@ -832,7 +863,8 @@ function renderActivities() {
     li.className = 'activity-item';
     li.draggable = true;
     li.dataset.activityId = act.id;
-    const monthLabel = weekToMonthLabel(act.startWeek);
+    const milestone = isMilestone(act);
+    const monthLabel = milestone ? formatMilestoneDate(act.date) : weekToMonthLabel(act.startWeek);
     const ring = state.rings.find(r => r.id === act.ringId);
     const ringColor = ring ? ring.color : '#888';
     const effColor = effectiveActivityColor(act, ringColor, agendaIndexFor(act.id));
@@ -847,13 +879,26 @@ function renderActivities() {
         <button class="btn-icon activity-color-reset" data-id="${act.id}" title="${escapeHtml(t('panel.activities.resetColor'))}" ${hasCustomColor ? '' : 'hidden'}>↺</button>
         <button class="btn-icon" data-id="${act.id}" data-action="delete-activity" title="${escapeHtml(t('panel.rings.removeTitle'))}">✕</button>
       </div>
-      <div class="activity-meta">
+      <div class="activity-meta${milestone ? ' is-milestone' : ''}">
+        <div class="mini-field">
+          <label>${escapeHtml(t('panel.activities.type'))}</label>
+          <select data-id="${act.id}" data-field="kind">
+            <option value="span" ${milestone ? '' : 'selected'}>${escapeHtml(t('panel.activities.typeSpan'))}</option>
+            <option value="milestone" ${milestone ? 'selected' : ''}>${escapeHtml(t('panel.activities.typeMilestone'))}</option>
+          </select>
+        </div>
         <div class="mini-field">
           <label>${escapeHtml(t('panel.activities.ring'))}</label>
           <select data-id="${act.id}" data-field="ringId">
             ${state.rings.map(r => `<option value="${r.id}" ${r.id === act.ringId ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('')}
           </select>
         </div>
+        ${milestone ? `
+        <div class="mini-field">
+          <label>${escapeHtml(t('panel.activities.date'))}</label>
+          <input type="date" value="${escapeHtml(act.date || '')}" data-id="${act.id}" data-field="date" />
+        </div>
+        ` : `
         <div class="mini-field">
           <label>${escapeHtml(t('panel.activities.startWeek'))}</label>
           <input type="number" min="1" max="52" value="${act.startWeek}" data-id="${act.id}" data-field="startWeek" />
@@ -862,8 +907,9 @@ function renderActivities() {
           <label>${escapeHtml(t('panel.activities.length'))}</label>
           <input type="number" min="1" max="52" value="${act.lengthWeeks}" data-id="${act.id}" data-field="lengthWeeks" />
         </div>
+        `}
       </div>
-      <div style="font-size:11px; color:var(--ink-faint); margin-top:2px;">≈ ${escapeHtml(monthLabel)}</div>
+      <div class="activity-when">${milestone ? '' : '≈ '}${escapeHtml(monthLabel)}</div>
     `;
     activityList.appendChild(li);
   });
@@ -874,17 +920,41 @@ function renderActivities() {
       const field = e.target.dataset.field;
       const act = state.activities.find(a => a.id === id);
       if (!act) return;
+      if (!field) return; // e.g. the color picker, handled separately below
       let val = e.target.value;
+
+      // Switching type swaps which fields are shown, so re-render the panel.
+      // The activity keeps its place on the wheel across the switch.
+      if (field === 'kind') {
+        if (val === 'milestone') {
+          act.kind = 'milestone';
+          if (!parseIsoDate(act.date)) act.date = defaultMilestoneDate(act);
+        } else {
+          const fw = milestoneFracWeek(act);
+          if (fw != null) act.startWeek = Math.max(1, Math.min(52, Math.floor(fw)));
+          if (act.lengthWeeks == null) act.lengthWeeks = 1;
+          delete act.kind;
+        }
+        saveState();
+        renderAll();
+        return;
+      }
+
       if (field === 'startWeek' || field === 'lengthWeeks') {
         val = Math.max(1, Math.min(52, +val || 1));
       }
       act[field] = val;
       saveState();
       renderWheel();
-      // update inline month label
-      if (field === 'startWeek') {
-        const labelEl = e.target.closest('.activity-item').querySelector('div[style]');
-        if (labelEl) labelEl.textContent = '≈ ' + weekToMonthLabel(act.startWeek);
+      renderLegend();
+      // update the inline "when" hint under the fields
+      if (field === 'startWeek' || field === 'date') {
+        const labelEl = e.target.closest('.activity-item').querySelector('.activity-when');
+        if (labelEl) {
+          labelEl.textContent = isMilestone(act)
+            ? formatMilestoneDate(act.date)
+            : '≈ ' + weekToMonthLabel(act.startWeek);
+        }
       }
     });
   });
@@ -951,7 +1021,10 @@ function renderLegend() {
       item.className = 'legend-item';
       const ringColor = entry.ring ? entry.ring.color : '#888';
       const color = effectiveActivityColor(entry.act, ringColor, n - 1);
-      item.innerHTML = `<span class="legend-swatch" style="background:${color}"></span><span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}`;
+      const ms = isMilestone(entry.act);
+      const swatch = `<span class="legend-swatch${ms ? ' legend-swatch-milestone' : ''}" style="background:${color}"></span>`;
+      const when = ms ? ` <span class="legend-when">· ${escapeHtml(formatMilestoneDate(entry.act.date))}</span>` : '';
+      item.innerHTML = `${swatch}<span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}${when}`;
       legend.appendChild(item);
     });
   } else {
@@ -962,6 +1035,27 @@ function renderLegend() {
       span.innerHTML = `<span class="legend-swatch" style="background:${r.color}"></span>${escapeHtml(r.name)}`;
       legend.appendChild(span);
     });
+    // Spans carry their names inside the wheel, but a single-day dot is too
+    // small for a name — so list those separately, keyed by number.
+    const msNum = milestoneNumberById();
+    if (msNum.size) {
+      const heading = document.createElement('div');
+      heading.className = 'legend-heading legend-milestone-heading';
+      heading.textContent = t('legend.milestones');
+      legend.appendChild(heading);
+      orderedAgendaActivities().forEach(entry => {
+        const num = msNum.get(entry.act.id);
+        if (num == null) return;
+        const ringColor = entry.ring ? entry.ring.color : '#888';
+        const color = effectiveActivityColor(entry.act, ringColor);
+        const item = document.createElement('span');
+        item.className = 'legend-item';
+        item.innerHTML = `<span class="legend-swatch legend-swatch-milestone" style="background:${color}"></span>`
+          + `<span class="legend-num">${num}.</span> ${escapeHtml(entry.act.name)}`
+          + ` <span class="legend-when">· ${escapeHtml(formatMilestoneDate(entry.act.date))}</span>`;
+        legend.appendChild(item);
+      });
+    }
   }
 }
 
@@ -1001,6 +1095,50 @@ function appendArcNumber(num, r1, r2, startAngle, endAngle) {
     fill: '#fff',
     class: 'wheel-arc-num',
   }, String(num));
+}
+
+// Draws a single-day activity as a filled dot centered on the ring band at its
+// date, with its legend number inside. A one-day arc would be 1-4px wide
+// depending on radius, so a marker of fixed size is used instead — it stays
+// readable wherever it lands.
+function appendMilestoneMarker(num, r1, r2, angle, color) {
+  const thickness = r2 - r1;
+  const size = Math.max(5, Math.min(13, thickness * 0.30));
+  const midR = (r1 + r2) / 2;
+  const cx = midR * Math.cos(angle);
+  const cy = midR * Math.sin(angle);
+
+  appendSvg('circle', {
+    cx, cy, r: size,
+    fill: color,
+    stroke: '#fff',
+    'stroke-width': 1.5,
+    class: 'wheel-milestone',
+  });
+
+  // Only label it when the dot is big enough to hold a legible digit
+  if (num != null && size >= 7) {
+    appendSvg('text', {
+      x: cx, y: cy,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      'font-size': Math.min(11, Math.max(7, size)),
+      'font-weight': 700,
+      fill: '#fff',
+      class: 'wheel-arc-num',
+    }, String(num));
+  }
+}
+
+// Numbers single-day activities 1..N on their own sequence, used when spans show their
+// names inside the wheel and therefore carry no numbers of their own.
+function milestoneNumberById() {
+  const map = new Map();
+  let n = 0;
+  orderedAgendaActivities().forEach(entry => {
+    if (isMilestone(entry.act)) map.set(entry.act.id, ++n);
+  });
+  return map;
 }
 
 // Builds the ordered list of activities for agenda layout: grouped by ring
@@ -1057,9 +1195,11 @@ function renderWheel() {
     // as needed so overlapping activities don't sit on top of each other.
     // A ring's thickness is proportional to its lane count, so peaceful
     // rings stay roomy while busy rings expand only where needed.
+    // Milestones are excluded here on purpose: they sit on top of the ring
+    // band rather than inside a lane, so a single day never makes a ring thicker.
     const lanesByRing = state.rings.map(ring => {
       const acts = state.activities
-        .filter(a => a.ringId === ring.id)
+        .filter(a => a.ringId === ring.id && !isMilestone(a))
         .slice()
         .sort((a, b) => a.startWeek - b.startWeek);
       const lastEndPerLane = []; // lane i -> last activity's end week
@@ -1113,6 +1253,7 @@ function renderWheel() {
     const showLabelsInside = getLabelPosition() !== 'side';
     const numById = showLabelsInside ? null : activityNumberById();
     state.activities.forEach(act => {
+      if (isMilestone(act)) return; // drawn as dots after all the arcs
       const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
       if (ringIdx === -1) return;
       const ring = state.rings[ringIdx];
@@ -1136,6 +1277,20 @@ function renderWheel() {
         const num = numById.get(act.id);
         if (num != null) appendArcNumber(num, r1, r2, startAngle, endAngle);
       }
+    });
+
+    // Single days last so they sit on top of any arc they overlap. They span
+    // the ring's full thickness rather than a single lane.
+    const msNum = showLabelsInside ? milestoneNumberById() : numById;
+    state.activities.forEach(act => {
+      if (!isMilestone(act)) return;
+      const ringIdx = state.rings.findIndex(r => r.id === act.ringId);
+      if (ringIdx === -1) return;
+      const fw = milestoneFracWeek(act);
+      if (fw == null) return;
+      const [r1, r2] = ringRadii[ringIdx];
+      const color = effectiveActivityColor(act, state.rings[ringIdx].color);
+      appendMilestoneMarker(msNum.get(act.id), r1, r2, weekToAngle(fw), color);
     });
   } else {
     // Agenda layout — one thin band per activity, outermost = first activity
@@ -1163,13 +1318,19 @@ function renderWheel() {
     ordered.forEach((entry, i) => {
       const r2 = outerR - i * bandThickness;
       const r1 = r2 - bandThickness;
+      const ringColor = entry.ring ? entry.ring.color : '#888';
+      const color = effectiveActivityColor(entry.act, ringColor, i);
+      if (isMilestone(entry.act)) {
+        const fw = milestoneFracWeek(entry.act);
+        if (fw != null) appendMilestoneMarker(i + 1, r1, r2, weekToAngle(fw), color);
+        return;
+      }
       const startAngle = weekToAngle(entry.act.startWeek);
       const endAngle = weekToAngle(entry.act.startWeek + entry.act.lengthWeeks);
       const path = arcPath(r1, r2, startAngle, endAngle);
-      const ringColor = entry.ring ? entry.ring.color : '#888';
       appendSvg('path', {
         d: path,
-        fill: effectiveActivityColor(entry.act, ringColor, i),
+        fill: color,
         class: 'wheel-arc',
         stroke: '#fff',
         'stroke-width': 0.5,
@@ -1415,6 +1576,77 @@ function weekToMonthLabel(week) {
   return monthName(monthIdx) + ' (' + t('activity.weekShort') + week + ')';
 }
 
+// ---------- Milestones (single-day activities, labelled "Dag"/"Day") ----------
+// A milestone is an activity with kind === 'milestone'. Instead of
+// startWeek + lengthWeeks it carries an ISO date ('YYYY-MM-DD') and is drawn
+// as a dot on the ring rather than as an arc — a one-day arc would be
+// ~1-4px wide depending on radius, too thin to see or label.
+// Not only deadlines: board meetings, parties and any fixed-date event too.
+// Activities without a `kind` are spans, so older saved wheels keep working.
+function isMilestone(act) {
+  return act && act.kind === 'milestone';
+}
+
+function parseIsoDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  // Reject rolled-over dates like 2026-02-31
+  if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return dt;
+}
+
+function toIsoDate(dt) {
+  return dt.getUTCFullYear() + '-'
+    + String(dt.getUTCMonth() + 1).padStart(2, '0') + '-'
+    + String(dt.getUTCDate()).padStart(2, '0');
+}
+
+// Position on the wheel as a fractional week (1.0 = start of week 1).
+// The wheel maps 52 weeks onto 360°, so a date lands between week marks.
+function fractionalWeekFromDate(dt, year) {
+  if (!dt) return 1;
+  const w1 = isoWeek1Monday(year).getTime();
+  const days = (dt.getTime() - w1) / 86400000;
+  // Clamp inside the circle; 53 would wrap around onto week 1.
+  return Math.max(1, Math.min(52.99, days / 7 + 1));
+}
+
+// The angle a milestone sits at, or null when its date is missing/unparseable.
+function milestoneFracWeek(act) {
+  const dt = parseIsoDate(act.date);
+  if (!dt) return null;
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  return fractionalWeekFromDate(dt, year);
+}
+
+// Sort key so milestones interleave correctly with spans where needed.
+function actStartWeek(act) {
+  if (isMilestone(act)) {
+    const fw = milestoneFracWeek(act);
+    return fw == null ? 1 : fw;
+  }
+  return act.startWeek;
+}
+
+// "Tor 12 Mar" — the weekday matters for a meeting or deadline, so lead with it.
+function formatMilestoneDate(iso) {
+  const dt = parseIsoDate(iso);
+  if (!dt) return '—';
+  const isoDay = (dt.getUTCDay() + 6) % 7; // 0=Sun..6=Sat  →  0=Mon..6=Sun
+  return weekdayName(isoDay) + ' ' + dt.getUTCDate() + ' ' + monthName(dt.getUTCMonth());
+}
+
+// Sensible starting date when switching an activity to a single day: keep it
+// where the activity already sat on the wheel (Monday of its start week).
+function defaultMilestoneDate(act) {
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const week = Math.max(1, Math.min(52, act.startWeek || 1));
+  return toIsoDate(dateFromYearWeek(year, week));
+}
+
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -1432,9 +1664,34 @@ function toast(msg) {
 const COL_ALIASES = {
   name:   ['aktivitet', 'aktiviteter', 'namn', 'activity', 'name', 'title'],
   ring:   ['ring', 'kategori', 'category', 'tema', 'grupp'],
-  start:  ['startvecka', 'vecka', 'start', 'startweek', 'week'],
+  start:  ['startvecka', 'vecka', 'startweek', 'week', 'start'],
   length: ['längd', 'langd', 'veckor', 'length', 'duration', 'weeks', 'längd (veckor)'],
+  type:   ['typ', 'type', 'sort', 'kind'],
+  date:   ['datum', 'date', 'startdatum', 'deadline'],
 };
+
+const MILESTONE_WORDS = /deadline|milstolpe|milestone|endag|en dag|dag$|day|punkt/i;
+
+// Import dates arrive as Date objects, Excel serial numbers or plain strings
+// depending on how the file was produced, so accept all three.
+function parseImportedDate(raw) {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return new Date(Date.UTC(raw.getFullYear(), raw.getMonth(), raw.getDate()));
+  }
+  if (typeof raw === 'number' && isFinite(raw)) {
+    // Excel 1900 serial dates; the epoch is offset by 2 days for Excel's
+    // deliberate 1900-leap-year bug, which Date.UTC(1899, 11, 30) absorbs.
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(raw) * 86400000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const s = String(raw).trim();
+  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(s);
+  if (m) return parseIsoDate(m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'));
+  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(s); // D/M/YYYY
+  if (m) return parseIsoDate(m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'));
+  return null;
+}
 
 function findColumn(headers, aliases) {
   for (let i = 0; i < headers.length; i++) {
@@ -1463,10 +1720,17 @@ async function handleActivitiesImport(e) {
     const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
     const nameCol  = findColumn(headers, COL_ALIASES.name);
     const ringCol  = findColumn(headers, COL_ALIASES.ring);
-    const startCol = findColumn(headers, COL_ALIASES.start);
+    let startCol   = findColumn(headers, COL_ALIASES.start);
     const lenCol   = findColumn(headers, COL_ALIASES.length);
+    const typeCol  = findColumn(headers, COL_ALIASES.type);
+    const dateCol  = findColumn(headers, COL_ALIASES.date);
 
-    if (nameCol === -1 || startCol === -1) {
+    // A header like "Startdatum" matches both the start-week and the date
+    // aliases. It's a date, so let the date column win.
+    if (startCol !== -1 && startCol === dateCol) startCol = -1;
+
+    // A file needs either week-based columns or a date column to place anything.
+    if (nameCol === -1 || (startCol === -1 && dateCol === -1)) {
       toast(t('toast.missingColumns'));
       return;
     }
@@ -1483,13 +1747,24 @@ async function handleActivitiesImport(e) {
       const row = rows[i];
       const name = String(row[nameCol] != null ? row[nameCol] : '').trim();
       const ringName = ringCol >= 0 ? String(row[ringCol] != null ? row[ringCol] : '').trim() : '';
-      const startWeekRaw = row[startCol];
+      const startWeekRaw = startCol >= 0 ? row[startCol] : '';
       const lengthRaw = lenCol >= 0 ? row[lenCol] : 1;
 
       const startWeek = parseInt(startWeekRaw, 10);
       const lengthWeeks = Math.max(1, parseInt(lengthRaw, 10) || 1);
 
-      if (!name || isNaN(startWeek) || startWeek < 1 || startWeek > 52) { skipped++; continue; }
+      // A row is a single day when the Typ column says so, or when it only
+      // carries a date and no usable start week.
+      const typeRaw = typeCol >= 0 ? String(row[typeCol] != null ? row[typeCol] : '').trim() : '';
+      const rowDate = dateCol >= 0 ? parseImportedDate(row[dateCol]) : null;
+      const wantsMilestone = MILESTONE_WORDS.test(typeRaw) || (!!rowDate && isNaN(startWeek));
+
+      if (!name) { skipped++; continue; }
+      if (wantsMilestone) {
+        if (!rowDate) { skipped++; continue; }
+      } else if (isNaN(startWeek) || startWeek < 1 || startWeek > 52) {
+        skipped++; continue;
+      }
 
       // Resolve ring: existing → previously created in this import → new
       let ring = null;
@@ -1511,13 +1786,23 @@ async function handleActivitiesImport(e) {
         newRings.push(ring);
       }
 
-      newActivities.push({
-        id: rid(),
-        name,
-        ringId: ring.id,
-        startWeek: Math.min(52, Math.max(1, startWeek)),
-        lengthWeeks: Math.min(52, lengthWeeks),
-      });
+      if (wantsMilestone) {
+        newActivities.push({
+          id: rid(),
+          name,
+          ringId: ring.id,
+          kind: 'milestone',
+          date: toIsoDate(rowDate),
+        });
+      } else {
+        newActivities.push({
+          id: rid(),
+          name,
+          ringId: ring.id,
+          startWeek: Math.min(52, Math.max(1, startWeek)),
+          lengthWeeks: Math.min(52, lengthWeeks),
+        });
+      }
     }
 
     if (newActivities.length === 0) {
@@ -1546,25 +1831,30 @@ function downloadActivitiesTemplate() {
     toast(t('toast.templateLoading'));
     return;
   }
+  // Periods use start week + length; single days leave those blank and give a date.
+  const span = t('template.typeSpan');
+  const day = t('template.typeMilestone');
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
   const sampleData = currentLang === 'en' ? [
-    ['Salary review meeting', 'Compensation & benefits', 14, 3],
-    ['Performance review', 'Development', 8, 4],
-    ['Summer party', 'Work environment', 25, 1],
-    ['Skills development Q3', 'Skills development', 36, 6],
-    ['Succession planning', 'Development', 44, 6],
+    ['Salary review meeting', 'Compensation & benefits', span, 14, 3, ''],
+    ['Performance review', 'Development', span, 8, 4, ''],
+    ['Board meeting', 'Board', day, '', '', year + '-03-12'],
+    ['Summer party', 'Work environment', day, '', '', year + '-06-12'],
+    ['Succession planning', 'Development', span, 44, 6, ''],
   ] : [
-    ['Lönesamtal', 'Lön & förmåner', 14, 3],
-    ['Utvecklingssamtal', 'Utveckling', 8, 4],
-    ['Sommarfest', 'Arbetsmiljö', 25, 1],
-    ['Kompetensutveckling Q3', 'Kompetensutveckling', 36, 6],
-    ['Successionsplan', 'Utveckling', 44, 6],
+    ['Lönesamtal', 'Lön & förmåner', span, 14, 3, ''],
+    ['Utvecklingssamtal', 'Utveckling', span, 8, 4, ''],
+    ['Styrelsemöte', 'Styrelse', day, '', '', year + '-03-12'],
+    ['Sommarfest', 'Arbetsmiljö', day, '', '', year + '-06-12'],
+    ['Successionsplan', 'Utveckling', span, 44, 6, ''],
   ];
   const data = [
-    [t('template.headerActivity'), t('template.headerRing'), t('template.headerStartWeek'), t('template.headerLength')],
+    [t('template.headerActivity'), t('template.headerRing'), t('template.headerType'),
+     t('template.headerStartWeek'), t('template.headerLength'), t('template.headerDate')],
     ...sampleData,
   ];
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 16 }];
+  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, t('template.sheetName'));
   XLSX.writeFile(wb, t('template.fileName'));
@@ -1715,22 +2005,38 @@ function addRing() {
 }
 
 function addActivity() {
+  addActivityOfKind({ startWeek: 1, lengthWeeks: 2 }, 'default.activity.new');
+}
+
+// "+ Dag" — a single-day activity, so a meeting or deadline can be added
+// directly instead of creating a period and switching its type afterwards.
+function addDayActivity() {
+  addActivityOfKind({ kind: 'milestone', date: defaultNewDayDate() }, 'default.activity.newDay');
+}
+
+function addActivityOfKind(fields, nameKey) {
   if (state.rings.length === 0) {
     alert(t('panel.activities.emptyNoRing'));
     return;
   }
-  state.activities.unshift({
+  state.activities.unshift(Object.assign({
     id: rid(),
-    name: t('default.activity.new'),
+    name: t(nameKey),
     ringId: state.rings[0].id,
-    startWeek: 1,
-    lengthWeeks: 2,
-  });
+  }, fields));
   saveState(); renderAll();
   setTimeout(() => {
     const first = activityList.querySelector('.activity-name');
     if (first) { first.focus(); first.select(); }
   }, 0);
+}
+
+// Today, mapped into the wheel's year so a new day always lands on the wheel
+// even when planning a year other than the current one.
+function defaultNewDayDate() {
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const now = new Date();
+  return toIsoDate(new Date(Date.UTC(year, now.getMonth(), now.getDate())));
 }
 
 // ---------- Export — shared PNG builder + PNG/PDF/PPT outputs ----------
@@ -1866,12 +2172,32 @@ async function exportWheelPDF() {
   }
 }
 
+// Rows for the export legends in classic/inside-label mode: the rings, plus
+// every single-day activity. Its dot carries only a number on the wheel, so
+// without this the exported slide or page would have no key for it.
+function exportLegendItems() {
+  const items = state.rings.map(r => ({ label: r.name || 'Ring', color: r.color, milestone: false }));
+  const msNum = milestoneNumberById();
+  orderedAgendaActivities().forEach(entry => {
+    const num = msNum.get(entry.act.id);
+    if (num == null) return;
+    const ringColor = entry.ring ? entry.ring.color : '#888888';
+    items.push({
+      label: num + '. ' + entry.act.name + ' · ' + formatMilestoneDate(entry.act.date),
+      color: effectiveActivityColor(entry.act, ringColor),
+      milestone: true,
+    });
+  });
+  return items;
+}
+
 function drawPdfLegend(doc, pageW, pageH) {
   if (wantsSideLegend()) {
     drawPdfLegendAgenda(doc, pageW, pageH);
     return;
   }
-  if (!state.rings.length) return;
+  const items = exportLegendItems();
+  if (!items.length) return;
   doc.setFontSize(9);
   doc.setTextColor(60, 70, 90);
   const margin = 14;
@@ -1881,19 +2207,22 @@ function drawPdfLegend(doc, pageW, pageH) {
   const rowHeight = 5;
   let y = pageH - 6;
   let x = margin;
-  state.rings.forEach(ring => {
-    const label = ring.name || 'Ring';
-    const labelW = doc.getTextWidth(label);
+  items.forEach(item => {
+    const labelW = doc.getTextWidth(item.label);
     const itemW = swatch + gap + labelW + itemGap;
     if (x + itemW > pageW - margin) {
       x = margin;
       y -= rowHeight;
     }
-    const rgb = hexToRgb(ring.color);
+    const rgb = hexToRgb(item.color);
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
-    doc.rect(x, y - swatch + 0.4, swatch, swatch, 'F');
+    if (item.milestone) {
+      doc.circle(x + swatch / 2, y - swatch / 2 + 0.4, swatch / 2, 'F');
+    } else {
+      doc.rect(x, y - swatch + 0.4, swatch, swatch, 'F');
+    }
     doc.setTextColor(40, 45, 60);
-    doc.text(label, x + swatch + gap, y);
+    doc.text(item.label, x + swatch + gap, y);
     x += itemW;
   });
 }
@@ -1929,9 +2258,15 @@ function drawPdfLegendAgenda(doc, pageW, pageH) {
     const ringColor = entry.ring ? entry.ring.color : '#888';
     const rgb = hexToRgb(effectiveActivityColor(entry.act, ringColor, i));
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
-    doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
+    if (isMilestone(entry.act)) {
+      doc.circle(xLeft + swatch / 2, y - swatch / 2 + 0.3, swatch / 2, 'F');
+    } else {
+      doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
+    }
     doc.setTextColor(60, 70, 90);
-    const label = `${i + 1}. ${entry.act.name}`;
+    const label = isMilestone(entry.act)
+      ? `${i + 1}. ${entry.act.name} · ${formatMilestoneDate(entry.act.date)}`
+      : `${i + 1}. ${entry.act.name}`;
     const truncated = doc.splitTextToSize(label, colWidth - swatch - 4)[0] || label;
     doc.text(truncated, xLeft + swatch + 2, y);
     y += lineH;
@@ -1987,7 +2322,8 @@ async function exportWheelPPT() {
 }
 
 function addPptLegend(slide, slideW, slideH) {
-  if (!state.rings.length) return;
+  const items = exportLegendItems();
+  if (!items.length) return;
   const swatch = 0.13;
   const gap = 0.1;
   const itemGap = 0.32;
@@ -1995,19 +2331,31 @@ function addPptLegend(slide, slideW, slideH) {
   const charWidthApprox = 0.07;
   const margin = 0.5;
   const rowHeight = 0.24;
-  let y = slideH - 0.28;
+  const widthOf = item => swatch + gap + item.label.length * charWidthApprox + itemGap;
+
+  // Measure first so the block can be anchored to the bottom edge. Extra rows
+  // can push this onto several rows, and growing downwards would run off-slide.
+  let rows = 1;
+  let used = margin;
+  items.forEach(item => {
+    const w = widthOf(item);
+    if (used + w > slideW - margin) { rows++; used = margin; }
+    used += w;
+  });
+
+  let y = slideH - 0.28 - (rows - 1) * rowHeight;
   let x = margin;
-  state.rings.forEach(ring => {
-    const label = ring.name || 'Ring';
-    const textW = label.length * charWidthApprox;
-    const itemW = swatch + gap + textW + itemGap;
+  items.forEach(item => {
+    const textW = item.label.length * charWidthApprox;
+    const itemW = widthOf(item);
     if (x + itemW > slideW - margin) { x = margin; y += rowHeight; }
-    slide.addShape('rect', {
+    const hex = item.color.replace('#', '');
+    slide.addShape(item.milestone ? 'ellipse' : 'rect', {
       x, y: y - swatch / 2, w: swatch, h: swatch,
-      fill: { color: ring.color.replace('#', '') },
-      line: { color: ring.color.replace('#', ''), width: 0 },
+      fill: { color: hex },
+      line: { color: hex, width: 0 },
     });
-    slide.addText(label, {
+    slide.addText(item.label, {
       x: x + swatch + gap, y: y - rowHeight / 2,
       w: textW + 0.2, h: rowHeight,
       fontSize, fontFace: 'Calibri', color: '1A2332',
@@ -2018,7 +2366,8 @@ function addPptLegend(slide, slideW, slideH) {
 }
 
 // ---------- ICS calendar export ----------
-// Each activity becomes one all-day VEVENT spanning startWeek..startWeek+lengthWeeks.
+// Each activity becomes one all-day VEVENT spanning startWeek..startWeek+lengthWeeks,
+// or a single all-day event on its date when the activity is a single day.
 // UIDs are stable across exports so re-importing into Outlook updates the
 // existing event instead of creating a duplicate.
 function isoWeek1Monday(year) {
@@ -2081,8 +2430,15 @@ function buildIcs() {
   const calName = `${state.client || t('wheel.centerFallback')} · ${year}`;
   lines.push(icsFold('X-WR-CALNAME:' + icsEscape(calName)));
   state.activities.forEach(act => {
-    const start = dateFromYearWeek(year, act.startWeek);
-    const end = dateFromYearWeek(year, act.startWeek + act.lengthWeeks);
+    let start, end;
+    if (isMilestone(act)) {
+      start = parseIsoDate(act.date);
+      if (!start) return; // no usable date — skip rather than emit a broken event
+      end = new Date(start.getTime() + 86400000); // all-day DTEND is exclusive
+    } else {
+      start = dateFromYearWeek(year, act.startWeek);
+      end = dateFromYearWeek(year, act.startWeek + act.lengthWeeks);
+    }
     const ring = ringById.get(act.ringId);
     const ringName = ring ? ring.name : '';
     lines.push('BEGIN:VEVENT');
@@ -2146,12 +2502,15 @@ function addPptLegendAgenda(slide, slideW, slideH) {
     if (y > slideH - lineH) return; // out of room
     const ringColorPpt = entry.ring ? entry.ring.color : '#888';
     const colorHex = effectiveActivityColor(entry.act, ringColorPpt, i).replace('#', '');
-    slide.addShape('rect', {
+    slide.addShape(isMilestone(entry.act) ? 'ellipse' : 'rect', {
       x: xLeft, y: y + (lineH - swatch) / 2, w: swatch, h: swatch,
       fill: { color: colorHex },
       line: { color: colorHex, width: 0 },
     });
-    slide.addText(`${i + 1}. ${entry.act.name}`, {
+    const pptLabel = isMilestone(entry.act)
+      ? `${i + 1}. ${entry.act.name} · ${formatMilestoneDate(entry.act.date)}`
+      : `${i + 1}. ${entry.act.name}`;
+    slide.addText(pptLabel, {
       x: xLeft + swatch + 0.08, y, w: colWidth - swatch - 0.1, h: lineH,
       fontSize: itemFs, fontFace: 'Calibri', color: '3C465A',
       valign: 'middle',
