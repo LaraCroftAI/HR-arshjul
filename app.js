@@ -131,7 +131,7 @@ const I18N = {
     'panel.activities.import': 'Importera',
     'panel.activities.add': '+ Period',
     'panel.activities.addDay': '+ Dag',
-    'panel.activities.hintBefore': 'Lägg in aktiviteten som en period (startvecka + längd) eller som en enskild dag med ett bestämt datum. Vill du importera en lista? ',
+    'panel.activities.hintBefore': 'Lägg in aktiviteten som en period (start- och slutdatum) eller som en enskild dag med ett bestämt datum. Vill du importera en lista? ',
     'panel.activities.hintLink': 'Hämta mallen',
     'panel.activities.hintAfter': '.',
     'panel.activities.empty': 'Inga aktiviteter än. Klicka "+ Lägg till aktivitet".',
@@ -170,7 +170,7 @@ const I18N = {
     'toast.templateLoading': 'Mall-biblioteket laddar — försök igen om en stund',
     'toast.fileEmpty': 'Filen verkar tom',
     'toast.noRows': 'Hittade inga rader att importera',
-    'toast.missingColumns': 'Filen saknar kolumn för Aktivitet eller Startvecka',
+    'toast.missingColumns': 'Filen saknar kolumn för Aktivitet eller Startdatum',
     'toast.noValidRows': 'Inga giltiga rader hittades — kontrollera mallen',
     'toast.importedActs': '{n} aktiviteter importerade',
     'toast.importedRings': '{n} nya ringar',
@@ -200,6 +200,8 @@ const I18N = {
     'template.headerRing': 'Ring',
     'template.headerStartWeek': 'Startvecka',
     'template.headerLength': 'Längd (veckor)',
+    'template.headerStartDate': 'Startdatum',
+    'template.headerEndDate': 'Slutdatum',
     'template.headerType': 'Typ',
     'template.headerDate': 'Datum',
     'template.typeSpan': 'Period',
@@ -304,7 +306,7 @@ const I18N = {
     'panel.activities.import': 'Import',
     'panel.activities.add': '+ Period',
     'panel.activities.addDay': '+ Day',
-    'panel.activities.hintBefore': 'Add the activity as a period (start week + length) or as a single day with a specific date. Want to import a list? ',
+    'panel.activities.hintBefore': 'Add the activity as a period (start and end date) or as a single day with a specific date. Want to import a list? ',
     'panel.activities.hintLink': 'Download the template',
     'panel.activities.hintAfter': '.',
     'panel.activities.empty': 'No activities yet. Click "+ Add activity".',
@@ -343,7 +345,7 @@ const I18N = {
     'toast.templateLoading': 'Template library loading — try again in a moment',
     'toast.fileEmpty': 'File appears to be empty',
     'toast.noRows': 'No rows found to import',
-    'toast.missingColumns': 'File is missing column for Activity or Start week',
+    'toast.missingColumns': 'File is missing column for Activity or Start date',
     'toast.noValidRows': 'No valid rows found — check the template',
     'toast.importedActs': '{n} activities imported',
     'toast.importedRings': '{n} new rings',
@@ -373,6 +375,8 @@ const I18N = {
     'template.headerRing': 'Ring',
     'template.headerStartWeek': 'Start week',
     'template.headerLength': 'Length (weeks)',
+    'template.headerStartDate': 'Start date',
+    'template.headerEndDate': 'End date',
     'template.headerType': 'Type',
     'template.headerDate': 'Date',
     'template.typeSpan': 'Period',
@@ -1775,13 +1779,19 @@ function toast(msg) {
 const COL_ALIASES = {
   name:   ['aktivitet', 'aktiviteter', 'namn', 'activity', 'name', 'title'],
   ring:   ['ring', 'kategori', 'category', 'tema', 'grupp'],
-  start:  ['startvecka', 'vecka', 'startweek', 'week', 'start'],
+  // Week-based start (legacy). NB: no bare 'start' — it would also match
+  // 'startdatum' (startsWith) and collide with the date column below.
+  start:  ['startvecka', 'vecka', 'startweek', 'start week', 'week'],
   length: ['längd', 'langd', 'veckor', 'length', 'duration', 'weeks', 'längd (veckor)'],
   type:   ['typ', 'type', 'sort', 'kind'],
-  date:   ['datum', 'date', 'startdatum', 'deadline'],
+  // Start / single-day date (also the milestone date).
+  date:   ['startdatum', 'start date', 'startdate', 'datum', 'date', 'deadline'],
+  // End date for a period.
+  end:    ['slutdatum', 'enddatum', 'end date', 'enddate', 'slut', 'end'],
 };
 
 const MILESTONE_WORDS = /deadline|milstolpe|milestone|endag|en dag|dag$|day|punkt/i;
+const SPAN_WORDS = /period|span|intervall|range/i;
 
 // Import dates arrive as Date objects, Excel serial numbers or plain strings
 // depending on how the file was produced, so accept all three.
@@ -1835,12 +1845,13 @@ async function handleActivitiesImport(e) {
     const lenCol   = findColumn(headers, COL_ALIASES.length);
     const typeCol  = findColumn(headers, COL_ALIASES.type);
     const dateCol  = findColumn(headers, COL_ALIASES.date);
+    const endCol   = findColumn(headers, COL_ALIASES.end);
 
-    // A header like "Startdatum" matches both the start-week and the date
-    // aliases. It's a date, so let the date column win.
+    // Safety net: if a bare "Start" header still lands on the date column,
+    // let the date column win (it's a date, not a week number).
     if (startCol !== -1 && startCol === dateCol) startCol = -1;
 
-    // A file needs either week-based columns or a date column to place anything.
+    // A file needs a start date or the legacy start-week column to place anything.
     if (nameCol === -1 || (startCol === -1 && dateCol === -1)) {
       toast(t('toast.missingColumns'));
       return;
@@ -1863,17 +1874,25 @@ async function handleActivitiesImport(e) {
 
       const startWeek = parseInt(startWeekRaw, 10);
       const lengthWeeks = Math.max(1, parseInt(lengthRaw, 10) || 1);
+      const hasWeek = !isNaN(startWeek) && startWeek >= 1 && startWeek <= 52;
 
-      // A row is a single day when the Typ column says so, or when it only
-      // carries a date and no usable start week.
       const typeRaw = typeCol >= 0 ? String(row[typeCol] != null ? row[typeCol] : '').trim() : '';
-      const rowDate = dateCol >= 0 ? parseImportedDate(row[dateCol]) : null;
-      const wantsMilestone = MILESTONE_WORDS.test(typeRaw) || (!!rowDate && isNaN(startWeek));
+      const startDateVal = dateCol >= 0 ? parseImportedDate(row[dateCol]) : null;
+      const endDateVal = endCol >= 0 ? parseImportedDate(row[endCol]) : null;
+      const hasDateRange = !!startDateVal && !!endDateVal;
+
+      // Type comes from the Typ column when given; otherwise a lone date (no
+      // end date, no week) reads as a single day and anything else as a period.
+      let wantsMilestone;
+      if (MILESTONE_WORDS.test(typeRaw)) wantsMilestone = true;
+      else if (SPAN_WORDS.test(typeRaw)) wantsMilestone = false;
+      else wantsMilestone = !!startDateVal && !endDateVal && !hasWeek;
 
       if (!name) { skipped++; continue; }
       if (wantsMilestone) {
-        if (!rowDate) { skipped++; continue; }
-      } else if (isNaN(startWeek) || startWeek < 1 || startWeek > 52) {
+        if (!startDateVal) { skipped++; continue; }
+      } else if (!hasDateRange && !hasWeek) {
+        // A period needs either a start+end date or a legacy start week.
         skipped++; continue;
       }
 
@@ -1903,11 +1922,22 @@ async function handleActivitiesImport(e) {
           name,
           ringId: ring.id,
           kind: 'milestone',
-          date: toIsoDate(rowDate),
+          date: toIsoDate(startDateVal),
+        });
+      } else if (hasDateRange) {
+        // Preferred: explicit start and end dates.
+        const s = startDateVal;
+        const e = endDateVal.getTime() < s.getTime() ? s : endDateVal; // clamp backwards ranges
+        newActivities.push({
+          id: rid(),
+          name,
+          ringId: ring.id,
+          startDate: toIsoDate(s),
+          endDate: toIsoDate(e),
         });
       } else {
-        // The template is week-based; convert to the wheel's start/end dates
-        // using its current year so imported periods land correctly.
+        // Legacy week-based row; convert to start/end dates using the wheel's
+        // current year so imported periods land correctly.
         const sw = Math.min(52, Math.max(1, startWeek));
         const lw = Math.min(52, lengthWeeks);
         const impYear = parseInt(state.year, 10) || new Date().getFullYear();
@@ -1947,30 +1977,32 @@ function downloadActivitiesTemplate() {
     toast(t('toast.templateLoading'));
     return;
   }
-  // Periods use start week + length; single days leave those blank and give a date.
+  // Periods use start + end date; single days give a start date and leave the
+  // end blank. (Legacy week+length files still import — see COL_ALIASES.)
   const span = t('template.typeSpan');
   const day = t('template.typeMilestone');
   const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const d = (mo, day2) => `${year}-${String(mo).padStart(2, '0')}-${String(day2).padStart(2, '0')}`;
   const sampleData = currentLang === 'en' ? [
-    ['Salary review meeting', 'Compensation & benefits', span, 14, 3, ''],
-    ['Performance review', 'Development', span, 8, 4, ''],
-    ['Board meeting', 'Board', day, '', '', year + '-03-12'],
-    ['Summer party', 'Work environment', day, '', '', year + '-06-12'],
-    ['Succession planning', 'Development', span, 44, 6, ''],
+    ['Salary review meeting', 'Compensation & benefits', span, d(4, 1), d(4, 21)],
+    ['Performance review', 'Development', span, d(2, 16), d(3, 15)],
+    ['Board meeting', 'Board', day, d(3, 12), ''],
+    ['Summer party', 'Work environment', day, d(6, 12), ''],
+    ['Succession planning', 'Development', span, d(11, 1), d(12, 12)],
   ] : [
-    ['Lönesamtal', 'Lön & förmåner', span, 14, 3, ''],
-    ['Utvecklingssamtal', 'Utveckling', span, 8, 4, ''],
-    ['Styrelsemöte', 'Styrelse', day, '', '', year + '-03-12'],
-    ['Sommarfest', 'Arbetsmiljö', day, '', '', year + '-06-12'],
-    ['Successionsplan', 'Utveckling', span, 44, 6, ''],
+    ['Lönesamtal', 'Lön & förmåner', span, d(4, 1), d(4, 21)],
+    ['Utvecklingssamtal', 'Utveckling', span, d(2, 16), d(3, 15)],
+    ['Styrelsemöte', 'Styrelse', day, d(3, 12), ''],
+    ['Sommarfest', 'Arbetsmiljö', day, d(6, 12), ''],
+    ['Successionsplan', 'Utveckling', span, d(11, 1), d(12, 12)],
   ];
   const data = [
     [t('template.headerActivity'), t('template.headerRing'), t('template.headerType'),
-     t('template.headerStartWeek'), t('template.headerLength'), t('template.headerDate')],
+     t('template.headerStartDate'), t('template.headerEndDate')],
     ...sampleData,
   ];
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, t('template.sheetName'));
   XLSX.writeFile(wb, t('template.fileName'));
