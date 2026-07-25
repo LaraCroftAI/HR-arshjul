@@ -140,6 +140,8 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Startvecka',
     'panel.activities.length': 'Längd v.',
+    'panel.activities.startDate': 'Startdatum',
+    'panel.activities.endDate': 'Slutdatum',
     'panel.activities.type': 'Typ',
     'panel.activities.typeSpan': 'Period',
     'panel.activities.typeMilestone': 'Dag',
@@ -311,6 +313,8 @@ const I18N = {
     'panel.activities.ring': 'Ring',
     'panel.activities.startWeek': 'Start week',
     'panel.activities.length': 'Length w.',
+    'panel.activities.startDate': 'Start date',
+    'panel.activities.endDate': 'End date',
     'panel.activities.type': 'Type',
     'panel.activities.typeSpan': 'Period',
     'panel.activities.typeMilestone': 'Day',
@@ -469,7 +473,9 @@ function setLanguage(lang) {
 let state = defaultState();
 
 function defaultState() {
-  return {
+  // Activities are authored here in the readable week+length form, then
+  // normalised to start/end dates (the storage format) before use.
+  return ensureActivityDates({
     client: '',
     year: new Date().getFullYear(),
     layout: 'wheel',
@@ -485,7 +491,7 @@ function defaultState() {
       { id: rid(), name: t('default.activity.summerParty'), ringId: null, startWeek: 25, lengthWeeks: 1 },
       { id: rid(), name: t('default.activity.succession'), ringId: null, startWeek: 44, lengthWeeks: 6 },
     ],
-  };
+  });
 }
 // link default activities to default rings
 (function linkDefaults() {
@@ -872,7 +878,7 @@ function renderActivities() {
     li.draggable = true;
     li.dataset.activityId = act.id;
     const milestone = isMilestone(act);
-    const monthLabel = milestone ? formatMilestoneDate(act.date) : weekToMonthLabel(act.startWeek);
+    const whenLabel = milestone ? formatMilestoneDate(act.date) : spanDateRangeLabel(act);
     const ring = state.rings.find(r => r.id === act.ringId);
     const ringColor = ring ? ring.color : '#888';
     const effColor = effectiveActivityColor(act, ringColor, agendaIndexFor(act.id));
@@ -908,16 +914,16 @@ function renderActivities() {
         </div>
         ` : `
         <div class="mini-field">
-          <label>${escapeHtml(t('panel.activities.startWeek'))}</label>
-          <input type="number" min="1" max="52" value="${act.startWeek}" data-id="${act.id}" data-field="startWeek" />
+          <label>${escapeHtml(t('panel.activities.startDate'))}</label>
+          <input type="date" value="${escapeHtml(act.startDate || '')}" data-id="${act.id}" data-field="startDate" />
         </div>
         <div class="mini-field">
-          <label>${escapeHtml(t('panel.activities.length'))}</label>
-          <input type="number" min="1" max="52" value="${act.lengthWeeks}" data-id="${act.id}" data-field="lengthWeeks" />
+          <label>${escapeHtml(t('panel.activities.endDate'))}</label>
+          <input type="date" value="${escapeHtml(act.endDate || '')}" min="${escapeHtml(act.startDate || '')}" data-id="${act.id}" data-field="endDate" />
         </div>
         `}
       </div>
-      <div class="activity-when">${milestone ? '' : '≈ '}${escapeHtml(monthLabel)}</div>
+      <div class="activity-when">${escapeHtml(whenLabel)}</div>
     `;
     activityList.appendChild(li);
   });
@@ -937,31 +943,48 @@ function renderActivities() {
         if (val === 'milestone') {
           act.kind = 'milestone';
           if (!parseIsoDate(act.date)) act.date = defaultMilestoneDate(act);
+          delete act.startDate;
+          delete act.endDate;
         } else {
-          const fw = milestoneFracWeek(act);
-          if (fw != null) act.startWeek = Math.max(1, Math.min(52, Math.floor(fw)));
-          if (act.lengthWeeks == null) act.lengthWeeks = 1;
+          // Anchor the new period on the milestone's day, spanning ~2 weeks.
+          const base = parseIsoDate(act.date) || parseIsoDate(defaultNewDayDate());
+          act.startDate = toIsoDate(base);
+          act.endDate = toIsoDate(new Date(base.getTime() + 13 * 86400000));
           delete act.kind;
+          delete act.date;
         }
         saveState();
         renderAll();
         return;
       }
 
-      if (field === 'startWeek' || field === 'lengthWeeks') {
-        val = Math.max(1, Math.min(52, +val || 1));
+      if (field === 'startDate' || field === 'endDate') {
+        act[field] = val;
+        // Keep the period from running backwards.
+        const s = parseIsoDate(act.startDate), en = parseIsoDate(act.endDate);
+        if (s && en && en.getTime() < s.getTime()) {
+          const fixField = field === 'startDate' ? 'endDate' : 'startDate';
+          act[fixField] = val;
+          const sibling = e.target.closest('.activity-meta').querySelector(`[data-field="${fixField}"]`);
+          if (sibling) sibling.value = val;
+        }
+        if (field === 'startDate') {
+          const endEl = e.target.closest('.activity-meta').querySelector('[data-field="endDate"]');
+          if (endEl) endEl.min = val;
+        }
+      } else {
+        act[field] = val;
       }
-      act[field] = val;
       saveState();
       renderWheel();
       renderLegend();
       // update the inline "when" hint under the fields
-      if (field === 'startWeek' || field === 'date') {
+      if (field === 'startDate' || field === 'endDate' || field === 'date') {
         const labelEl = e.target.closest('.activity-item').querySelector('.activity-when');
         if (labelEl) {
           labelEl.textContent = isMilestone(act)
             ? formatMilestoneDate(act.date)
-            : '≈ ' + weekToMonthLabel(act.startWeek);
+            : spanDateRangeLabel(act);
         }
       }
     });
@@ -1209,12 +1232,12 @@ function renderWheel() {
       const acts = state.activities
         .filter(a => a.ringId === ring.id && !isMilestone(a))
         .slice()
-        .sort((a, b) => a.startWeek - b.startWeek);
+        .sort((a, b) => spanStartFracWeek(a) - spanStartFracWeek(b));
       const lastEndPerLane = []; // lane i -> last activity's end week
       const laneOf = new Map(); // act.id -> lane index
       for (const act of acts) {
-        const startW = act.startWeek;
-        const endW = startW + act.lengthWeeks;
+        const startW = spanStartFracWeek(act);
+        const endW = spanEndFracWeek(act);
         let assigned = -1;
         for (let li = 0; li < lastEndPerLane.length; li++) {
           if (startW >= lastEndPerLane[li]) { assigned = li; break; }
@@ -1269,8 +1292,8 @@ function renderWheel() {
       const laneIdx = lanesByRing[ringIdx].laneOf.get(act.id) || 0;
       const r1 = ringR1 + laneIdx * laneThickness;
       const r2 = r1 + laneThickness;
-      const startAngle = weekToAngle(act.startWeek);
-      const endAngle = weekToAngle(act.startWeek + act.lengthWeeks);
+      const startAngle = weekToAngle(spanStartFracWeek(act));
+      const endAngle = weekToAngle(spanEndFracWeek(act));
       const path = arcPath(r1, r2, startAngle, endAngle);
       appendSvg('path', {
         d: path,
@@ -1280,7 +1303,7 @@ function renderWheel() {
         'stroke-width': 1,
       });
       if (showLabelsInside) {
-        appendRadialText(act.name, r1, r2, startAngle, endAngle, act.lengthWeeks);
+        appendRadialText(act.name, r1, r2, startAngle, endAngle, spanLengthWeeks(act));
       } else {
         const num = numById.get(act.id);
         if (num != null) appendArcNumber(num, r1, r2, startAngle, endAngle);
@@ -1333,8 +1356,8 @@ function renderWheel() {
         if (fw != null) appendMilestoneMarker(i + 1, r1, r2, weekToAngle(fw), color);
         return;
       }
-      const startAngle = weekToAngle(entry.act.startWeek);
-      const endAngle = weekToAngle(entry.act.startWeek + entry.act.lengthWeeks);
+      const startAngle = weekToAngle(spanStartFracWeek(entry.act));
+      const endAngle = weekToAngle(spanEndFracWeek(entry.act));
       const path = arcPath(r1, r2, startAngle, endAngle);
       appendSvg('path', {
         d: path,
@@ -1579,32 +1602,90 @@ function lightenColor(hex, amount) {
   return `rgb(${lr}, ${lg}, ${lb})`;
 }
 
-function weekToMonthLabel(week) {
-  const monthIdx = Math.min(11, Math.floor((week - 1) / 4.333));
-  return monthName(monthIdx) + ' (' + t('activity.weekShort') + week + ')';
+// ---------- Period activities: stored as start/end dates ----------
+// A period (span) carries `startDate` and `endDate` (inclusive, ISO
+// 'YYYY-MM-DD'). The wheel is still laid out in weeks, so these accessors
+// project the stored dates onto the wheel's fractional-week axis.
+function spanStartFracWeek(act) {
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const dt = parseIsoDate(act.startDate);
+  return dt ? fractionalWeekFromDate(dt, year) : 1;
+}
+function spanEndFracWeek(act) {
+  const year = parseInt(state.year, 10) || new Date().getFullYear();
+  const s = parseIsoDate(act.startDate);
+  const startF = s ? fractionalWeekFromDate(s, year) : 1;
+  const e = parseIsoDate(act.endDate) || s;
+  if (!e) return Math.min(52.99, startF + 1 / 7);
+  // endDate is inclusive, so the arc runs through the end of that day (+1 day).
+  let endF = fractionalWeekFromDate(new Date(e.getTime() + 86400000), year);
+  if (endF <= startF) endF = Math.min(52.99, startF + 1 / 7);
+  return endF;
+}
+function spanLengthWeeks(act) {
+  return Math.max(0.1, spanEndFracWeek(act) - spanStartFracWeek(act));
 }
 
-function weekToMonthIndex(week) {
-  const w = Math.max(1, Math.min(52, week || 1));
-  return Math.min(11, Math.floor((w - 1) / 4.333));
+// "3 mar – 20 mar" — the exact range, shown under the fields in the panel.
+function spanDateRangeLabel(act) {
+  const s = parseIsoDate(act.startDate);
+  if (!s) return '—';
+  const e = parseIsoDate(act.endDate) || s;
+  const fmt = dt => dt.getUTCDate() + ' ' + monthName(dt.getUTCMonth());
+  return e.getTime() === s.getTime() ? fmt(s) : fmt(s) + ' – ' + fmt(e);
 }
 
-// Month — or month range — a period activity covers, for the side legend.
-// e.g. "mars" or "mars–maj". A span can cross month boundaries, so show a
-// range when its start and end weeks fall in different months.
+// Month — or month range — a period covers, for the compact side legend.
 function spanMonthLabel(act) {
-  const start = Math.max(1, Math.min(52, act.startWeek || 1));
-  const len = Math.max(1, act.lengthWeeks || 1);
-  const end = Math.min(52, start + len - 1);
-  const startM = weekToMonthIndex(start);
-  const endM = weekToMonthIndex(end);
-  return startM === endM ? monthName(startM) : monthName(startM) + '–' + monthName(endM);
+  const s = parseIsoDate(act.startDate);
+  if (!s) return '—';
+  const e = parseIsoDate(act.endDate) || s;
+  const sm = s.getUTCMonth(), em = e.getUTCMonth();
+  return sm === em ? monthName(sm) : monthName(sm) + '–' + monthName(em);
 }
 
-// The "when" suffix shown after an activity's name in the side legend:
+// The "when" suffix after an activity's name in the side legend:
 // a fixed date for single-day milestones, the covered month(s) for periods.
 function legendWhenLabel(act) {
   return isMilestone(act) ? formatMilestoneDate(act.date) : spanMonthLabel(act);
+}
+
+// Convert legacy week+length spans into start/end dates, in place. Idempotent:
+// activities that already have both dates (or are milestones) are left alone.
+// Runs on every wheel before it's shown (switchToWheel) and on defaults, so
+// older saved wheels and PNGs keep working after the model change.
+function ensureActivityDates(data) {
+  if (!data || !Array.isArray(data.activities)) return data;
+  const year = parseInt(data.year, 10) || new Date().getFullYear();
+  data.activities.forEach(act => {
+    if (isMilestone(act)) return;
+    if (act.startDate && act.endDate) return;
+    if (!act.startDate) {
+      const sw = Math.max(1, Math.min(52, parseInt(act.startWeek, 10) || 1));
+      const lw = Math.max(1, parseInt(act.lengthWeeks, 10) || 1);
+      act.startDate = toIsoDate(dateFromYearWeek(year, sw));
+      // endDate is inclusive: the day before the exclusive week boundary.
+      act.endDate = toIsoDate(new Date(dateFromYearWeek(year, sw + lw).getTime() - 86400000));
+    } else if (!act.endDate) {
+      act.endDate = act.startDate;
+    }
+    delete act.startWeek;
+    delete act.lengthWeeks;
+  });
+  return data;
+}
+
+// Shift an ISO date by whole years, clamping 29 Feb to 28 Feb in a non-leap
+// target year. Used when copying a wheel to another year.
+function shiftIsoYears(iso, deltaYears) {
+  const dt = parseIsoDate(iso);
+  if (!dt || !deltaYears) return iso;
+  const y = dt.getUTCFullYear() + deltaYears;
+  const mo = dt.getUTCMonth();
+  let d = dt.getUTCDate();
+  const probe = new Date(Date.UTC(y, mo, d));
+  if (probe.getUTCMonth() !== mo) d = 28; // 29 Feb → 28 Feb
+  return toIsoDate(new Date(Date.UTC(y, mo, d)));
 }
 
 // ---------- Milestones (single-day activities, labelled "Dag"/"Day") ----------
@@ -1659,7 +1740,7 @@ function actStartWeek(act) {
     const fw = milestoneFracWeek(act);
     return fw == null ? 1 : fw;
   }
-  return act.startWeek;
+  return spanStartFracWeek(act);
 }
 
 // "Tor 12 Mar" — the weekday matters for a meeting or deadline, so lead with it.
@@ -1671,11 +1752,10 @@ function formatMilestoneDate(iso) {
 }
 
 // Sensible starting date when switching an activity to a single day: keep it
-// where the activity already sat on the wheel (Monday of its start week).
+// where the period already began, falling back to today-in-the-wheel's-year.
 function defaultMilestoneDate(act) {
-  const year = parseInt(state.year, 10) || new Date().getFullYear();
-  const week = Math.max(1, Math.min(52, act.startWeek || 1));
-  return toIsoDate(dateFromYearWeek(year, week));
+  if (act && parseIsoDate(act.startDate)) return act.startDate;
+  return defaultNewDayDate();
 }
 
 function escapeHtml(str) {
@@ -1826,12 +1906,17 @@ async function handleActivitiesImport(e) {
           date: toIsoDate(rowDate),
         });
       } else {
+        // The template is week-based; convert to the wheel's start/end dates
+        // using its current year so imported periods land correctly.
+        const sw = Math.min(52, Math.max(1, startWeek));
+        const lw = Math.min(52, lengthWeeks);
+        const impYear = parseInt(state.year, 10) || new Date().getFullYear();
         newActivities.push({
           id: rid(),
           name,
           ringId: ring.id,
-          startWeek: Math.min(52, Math.max(1, startWeek)),
-          lengthWeeks: Math.min(52, lengthWeeks),
+          startDate: toIsoDate(dateFromYearWeek(impYear, sw)),
+          endDate: toIsoDate(new Date(dateFromYearWeek(impYear, sw + lw).getTime() - 86400000)),
         });
       }
     }
@@ -2036,7 +2121,10 @@ function addRing() {
 }
 
 function addActivity() {
-  addActivityOfKind({ startWeek: 1, lengthWeeks: 2 }, 'default.activity.new');
+  const startDate = defaultNewDayDate();
+  const base = parseIsoDate(startDate);
+  const endDate = toIsoDate(new Date(base.getTime() + 13 * 86400000)); // ~2 weeks
+  addActivityOfKind({ startDate, endDate }, 'default.activity.new');
 }
 
 // "+ Dag" — a single-day activity, so a meeting or deadline can be added
@@ -2395,7 +2483,7 @@ function addPptLegend(slide, slideW, slideH) {
 }
 
 // ---------- ICS calendar export ----------
-// Each activity becomes one all-day VEVENT spanning startWeek..startWeek+lengthWeeks,
+// Each period becomes one all-day VEVENT from its startDate to its endDate,
 // or a single all-day event on its date when the activity is a single day.
 // UIDs are stable across exports so re-importing into Outlook updates the
 // existing event instead of creating a duplicate.
@@ -2465,8 +2553,10 @@ function buildIcs() {
       if (!start) return; // no usable date — skip rather than emit a broken event
       end = new Date(start.getTime() + 86400000); // all-day DTEND is exclusive
     } else {
-      start = dateFromYearWeek(year, act.startWeek);
-      end = dateFromYearWeek(year, act.startWeek + act.lengthWeeks);
+      start = parseIsoDate(act.startDate);
+      if (!start) return; // no usable date — skip rather than emit a broken event
+      const last = parseIsoDate(act.endDate) || start;
+      end = new Date(last.getTime() + 86400000); // all-day DTEND is exclusive
     }
     const ring = ringById.get(act.ringId);
     const ringName = ring ? ring.name : '';
@@ -3342,6 +3432,9 @@ function collectLocalWheels() {
 async function switchToWheel(id, opts) {
   const w = wheels.find(x => x.id === id);
   if (!w) return;
+  // Bring older week-based wheels (and freshly restored PNGs) up to the
+  // start/end-date model before anything reads or renders them.
+  ensureActivityDates(w.data);
   // If we have a pending save for the previous wheel, flush it first so
   // we don't accidentally drop those edits when state switches.
   if (pendingSave && pendingSave.id !== id && saveTimer) {
@@ -3381,6 +3474,7 @@ function createNewWheel() {
 function duplicateWheel(sourceId) {
   const src = wheels.find(w => w.id === sourceId);
   if (!src || !src.data) return;
+  ensureActivityDates(src.data); // ensure the source is date-based before cloning
   // Ask which year the copy is for, pre-filling next year so Enter = +1.
   const baseYear = parseInt(src.data.year, 10) || new Date().getFullYear();
   const answer = prompt(t('prompt.copyYear'), String(baseYear + 1));
@@ -3397,6 +3491,16 @@ function duplicateWheel(sourceId) {
     return;
   }
   data.year = year;
+  // Move every dated activity into the target year so a copy of 2026 lands
+  // on the same days in 2027 (milestones shift too — they didn't before).
+  const delta = year - baseYear;
+  if (delta) {
+    data.activities.forEach(act => {
+      if (act.date) act.date = shiftIsoYears(act.date, delta);
+      if (act.startDate) act.startDate = shiftIsoYears(act.startDate, delta);
+      if (act.endDate) act.endDate = shiftIsoYears(act.endDate, delta);
+    });
+  }
   const id = newWheelId();
   wheels.push({ id, data });
   switchToWheel(id);
