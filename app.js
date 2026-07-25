@@ -229,6 +229,8 @@ const I18N = {
     'wheels.new': '+ Nytt hjul',
     'wheels.untitled': 'Namnlöst hjul',
     'wheels.deleteTitle': 'Ta bort detta hjul',
+    'wheels.duplicateTitle': 'Kopiera till nästa år',
+    'toast.duplicated': 'Kopia skapad för {year} — justera fritt',
     'confirm.deleteWheel': 'Ta bort hjulet "{name}"? Det går inte att ångra.',
   },
   en: {
@@ -396,6 +398,8 @@ const I18N = {
     'wheels.new': '+ New wheel',
     'wheels.untitled': 'Untitled wheel',
     'wheels.deleteTitle': 'Delete this wheel',
+    'wheels.duplicateTitle': 'Copy to next year',
+    'toast.duplicated': 'Copy created for {year} — edit freely',
     'confirm.deleteWheel': 'Delete wheel "{name}"? This can\'t be undone.',
   },
 };
@@ -3348,6 +3352,27 @@ function createNewWheel() {
   saveState(); // persist new wheel to Supabase
 }
 
+// Copy an existing wheel into a brand-new one for the next year. Rings and
+// activities are deep-cloned; activity→ring links live inside the same data
+// blob (ringId references), so they stay valid without remapping ids.
+function duplicateWheel(sourceId) {
+  const src = wheels.find(w => w.id === sourceId);
+  if (!src || !src.data) return;
+  let data;
+  try {
+    data = JSON.parse(JSON.stringify(src.data)); // plain-JSON deep clone
+  } catch {
+    return;
+  }
+  const baseYear = parseInt(data.year, 10) || new Date().getFullYear();
+  data.year = baseYear + 1;
+  const id = newWheelId();
+  wheels.push({ id, data });
+  switchToWheel(id);
+  saveState(); // persist the copy to Supabase
+  toast(t('toast.duplicated', { year: data.year }));
+}
+
 async function deleteWheel(id) {
   const idx = wheels.findIndex(w => w.id === id);
   if (idx === -1) return;
@@ -3426,6 +3451,18 @@ function refreshWheelsList() {
       switchToWheel(w.id);
     });
     row.appendChild(switchBtn);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'wheel-copy';
+    copy.title = t('wheels.duplicateTitle');
+    copy.setAttribute('aria-label', t('wheels.duplicateTitle'));
+    copy.textContent = '⧉';
+    copy.addEventListener('click', e => {
+      e.stopPropagation();
+      $('wheelsMenu').hidden = true;
+      duplicateWheel(w.id);
+    });
+    row.appendChild(copy);
     if (wheels.length > 1) {
       const del = document.createElement('button');
       del.type = 'button';

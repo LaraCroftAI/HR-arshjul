@@ -783,6 +783,17 @@ h1, h2, h3 {
 }
 .wheel-row:hover .wheel-delete { visibility: visible; }
 .wheel-row .wheel-delete:hover { color: #B0463A; }
+.wheel-row .wheel-copy {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink-faint);
+  padding: 8px 10px;
+  font-size: 13px;
+  visibility: hidden;
+}
+.wheel-row:hover .wheel-copy { visibility: visible; }
+.wheel-row .wheel-copy:hover { color: var(--ink); }
 .wheels-current {
   font-weight: 500;
   max-width: 200px;
