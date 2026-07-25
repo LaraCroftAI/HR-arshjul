@@ -1031,7 +1031,7 @@ function renderLegend() {
       const color = effectiveActivityColor(entry.act, ringColor, n - 1);
       const ms = isMilestone(entry.act);
       const swatch = `<span class="legend-swatch${ms ? ' legend-swatch-milestone' : ''}" style="background:${color}"></span>`;
-      const when = ms ? ` <span class="legend-when">· ${escapeHtml(formatMilestoneDate(entry.act.date))}</span>` : '';
+      const when = ` <span class="legend-when">· ${escapeHtml(legendWhenLabel(entry.act))}</span>`;
       item.innerHTML = `${swatch}<span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}${when}`;
       legend.appendChild(item);
     });
@@ -1582,6 +1582,29 @@ function lightenColor(hex, amount) {
 function weekToMonthLabel(week) {
   const monthIdx = Math.min(11, Math.floor((week - 1) / 4.333));
   return monthName(monthIdx) + ' (' + t('activity.weekShort') + week + ')';
+}
+
+function weekToMonthIndex(week) {
+  const w = Math.max(1, Math.min(52, week || 1));
+  return Math.min(11, Math.floor((w - 1) / 4.333));
+}
+
+// Month — or month range — a period activity covers, for the side legend.
+// e.g. "mars" or "mars–maj". A span can cross month boundaries, so show a
+// range when its start and end weeks fall in different months.
+function spanMonthLabel(act) {
+  const start = Math.max(1, Math.min(52, act.startWeek || 1));
+  const len = Math.max(1, act.lengthWeeks || 1);
+  const end = Math.min(52, start + len - 1);
+  const startM = weekToMonthIndex(start);
+  const endM = weekToMonthIndex(end);
+  return startM === endM ? monthName(startM) : monthName(startM) + '–' + monthName(endM);
+}
+
+// The "when" suffix shown after an activity's name in the side legend:
+// a fixed date for single-day milestones, the covered month(s) for periods.
+function legendWhenLabel(act) {
+  return isMilestone(act) ? formatMilestoneDate(act.date) : spanMonthLabel(act);
 }
 
 // ---------- Milestones (single-day activities, labelled "Dag"/"Day") ----------
@@ -2272,9 +2295,7 @@ function drawPdfLegendAgenda(doc, pageW, pageH) {
       doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
     }
     doc.setTextColor(60, 70, 90);
-    const label = isMilestone(entry.act)
-      ? `${i + 1}. ${entry.act.name} · ${formatMilestoneDate(entry.act.date)}`
-      : `${i + 1}. ${entry.act.name}`;
+    const label = `${i + 1}. ${entry.act.name} · ${legendWhenLabel(entry.act)}`;
     const truncated = doc.splitTextToSize(label, colWidth - swatch - 4)[0] || label;
     doc.text(truncated, xLeft + swatch + 2, y);
     y += lineH;
@@ -2515,9 +2536,7 @@ function addPptLegendAgenda(slide, slideW, slideH) {
       fill: { color: colorHex },
       line: { color: colorHex, width: 0 },
     });
-    const pptLabel = isMilestone(entry.act)
-      ? `${i + 1}. ${entry.act.name} · ${formatMilestoneDate(entry.act.date)}`
-      : `${i + 1}. ${entry.act.name}`;
+    const pptLabel = `${i + 1}. ${entry.act.name} · ${legendWhenLabel(entry.act)}`;
     slide.addText(pptLabel, {
       x: xLeft + swatch + 0.08, y, w: colWidth - swatch - 0.1, h: lineH,
       fontSize: itemFs, fontFace: 'Calibri', color: '3C465A',
