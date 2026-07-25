@@ -229,8 +229,10 @@ const I18N = {
     'wheels.new': '+ Nytt hjul',
     'wheels.untitled': 'Namnlöst hjul',
     'wheels.deleteTitle': 'Ta bort detta hjul',
-    'wheels.duplicateTitle': 'Kopiera till nästa år',
+    'wheels.duplicateTitle': 'Kopiera till valfritt år',
+    'prompt.copyYear': 'Vilket år ska kopian gälla?',
     'toast.duplicated': 'Kopia skapad för {year} — justera fritt',
+    'toast.invalidYear': 'Ogiltigt årtal — ingen kopia skapades',
     'confirm.deleteWheel': 'Ta bort hjulet "{name}"? Det går inte att ångra.',
   },
   en: {
@@ -398,8 +400,10 @@ const I18N = {
     'wheels.new': '+ New wheel',
     'wheels.untitled': 'Untitled wheel',
     'wheels.deleteTitle': 'Delete this wheel',
-    'wheels.duplicateTitle': 'Copy to next year',
+    'wheels.duplicateTitle': 'Copy to any year',
+    'prompt.copyYear': 'Which year is the copy for?',
     'toast.duplicated': 'Copy created for {year} — edit freely',
+    'toast.invalidYear': 'Invalid year — no copy was created',
     'confirm.deleteWheel': 'Delete wheel "{name}"? This can\'t be undone.',
   },
 };
@@ -3358,14 +3362,22 @@ function createNewWheel() {
 function duplicateWheel(sourceId) {
   const src = wheels.find(w => w.id === sourceId);
   if (!src || !src.data) return;
+  // Ask which year the copy is for, pre-filling next year so Enter = +1.
+  const baseYear = parseInt(src.data.year, 10) || new Date().getFullYear();
+  const answer = prompt(t('prompt.copyYear'), String(baseYear + 1));
+  if (answer === null) return; // user cancelled — no copy created
+  const year = parseInt(answer, 10);
+  if (!year || year < 1900 || year > 2999) {
+    toast(t('toast.invalidYear'));
+    return;
+  }
   let data;
   try {
     data = JSON.parse(JSON.stringify(src.data)); // plain-JSON deep clone
   } catch {
     return;
   }
-  const baseYear = parseInt(data.year, 10) || new Date().getFullYear();
-  data.year = baseYear + 1;
+  data.year = year;
   const id = newWheelId();
   wheels.push({ id, data });
   switchToWheel(id);
