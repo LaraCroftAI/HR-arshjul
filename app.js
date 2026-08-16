@@ -105,9 +105,9 @@ const I18N = {
     'auth.err.rateLimit': 'För många försök. Vänta en stund och försök igen.',
     'auth.err.weakPwd': 'Lösenordet är för svagt — välj ett längre eller mer komplext.',
     'auth.err.generic': 'Något gick fel. Försök igen.',
-    'topbar.client': 'Företag',
+    'topbar.wheelName': 'Namn på hjulet',
     'topbar.year': 'År',
-    'topbar.clientPh': 't.ex. Acme AB',
+    'topbar.wheelNamePh': 't.ex. Acme AB – onboarding',
     'topbar.newWheel': 'Nytt hjul',
     'topbar.uploadImage': 'Ladda upp bild',
     'topbar.export': 'Ladda ner ▾',
@@ -283,9 +283,9 @@ const I18N = {
     'auth.err.rateLimit': 'Too many attempts. Wait a moment and try again.',
     'auth.err.weakPwd': 'Password is too weak — choose a longer or more complex one.',
     'auth.err.generic': 'Something went wrong. Try again.',
-    'topbar.client': 'Company',
+    'topbar.wheelName': 'Wheel name',
     'topbar.year': 'Year',
-    'topbar.clientPh': 'e.g. Acme Inc.',
+    'topbar.wheelNamePh': 'e.g. Acme Inc. – onboarding',
     'topbar.newWheel': 'New wheel',
     'topbar.uploadImage': 'Upload image',
     'topbar.export': 'Download ▾',
@@ -650,14 +650,18 @@ const ringList = $('ringList');
 const activityList = $('activityList');
 const wheel = $('wheel');
 const legend = $('legend');
-const clientNameInput = $('clientName');
+const wheelNameInput = $('wheelName');
 const clientYearInput = $('clientYear');
 
 // ---------- Init ----------
-clientNameInput.value = state.client || '';
+// OBS: lagringsnyckeln heter fortfarande `client` — fältet hette "Företag" förr.
+// Den ligger kvar oförändrad så att gamla sparade hjul och exporterade PNG:er
+// (som bär datan i en tEXt-chunk) fungerar utan migrering. Samma grepp som
+// `kind: 'milestone'` bakom etiketten "Dag".
+wheelNameInput.value = state.client || '';
 clientYearInput.value = state.year || new Date().getFullYear();
 
-clientNameInput.addEventListener('input', () => { state.client = clientNameInput.value; saveState(); renderWheel(); refreshWheelsList(); });
+wheelNameInput.addEventListener('input', () => { state.client = wheelNameInput.value; saveState(); renderWheel(); refreshWheelsList(); });
 clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.value || new Date().getFullYear(); saveState(); renderWheel(); refreshWheelsList(); });
 
 $('addRingBtn').addEventListener('click', addRing);
@@ -2327,7 +2331,7 @@ async function buildWheelPngBlob() {
 async function exportWheelPNG() {
   try {
     const blob = await buildWheelPngBlob();
-    downloadBlob(blob, `${exportFilenameStem()}-${safeClientName()}-${state.year}.png`);
+    downloadBlob(blob, `${exportFilenameStem()}-${safeWheelName()}-${state.year}.png`);
     toast(t('toast.imageDownloaded'));
   } catch (e) {
     console.error(e);
@@ -2366,7 +2370,7 @@ async function exportWheelPDF() {
       drawPdfLegend(doc, pageW, pageH);
     }
 
-    doc.save(`${exportFilenameStem()}-${safeClientName()}-${state.year}.pdf`);
+    doc.save(`${exportFilenameStem()}-${safeWheelName()}-${state.year}.pdf`);
     toast(t('toast.pdfDownloaded'));
   } catch (e) {
     console.error(e);
@@ -2513,7 +2517,7 @@ async function exportWheelPPT() {
       addPptLegend(slide, slideW, slideH);
     }
 
-    await pres.writeFile({ fileName: `${exportFilenameStem()}-${safeClientName()}-${state.year}.pptx` });
+    await pres.writeFile({ fileName: `${exportFilenameStem()}-${safeWheelName()}-${state.year}.pptx` });
     toast(t('toast.pptDownloaded'));
   } catch (e) {
     console.error(e);
@@ -2667,7 +2671,7 @@ async function exportWheelICS() {
     }
     const ics = buildIcs();
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    downloadBlob(blob, `${exportFilenameStem()}-${safeClientName()}-${state.year}.ics`);
+    downloadBlob(blob, `${exportFilenameStem()}-${safeWheelName()}-${state.year}.ics`);
     toast(t('toast.icsDownloaded'));
   } catch (e) {
     console.error(e);
@@ -2738,8 +2742,9 @@ function blobToDataUrl(blob) {
     r.readAsDataURL(blob);
   });
 }
-function safeClientName() {
-  const fallback = currentLang === 'en' ? 'client' : 'kund';
+// Hjulets namn, saniterat för att duga som filnamn vid export.
+function safeWheelName() {
+  const fallback = currentLang === 'en' ? 'wheel' : 'hjul';
   return (state.client || fallback).trim().replace(/[^a-zA-ZåäöÅÄÖ0-9_-]/g, '_') || fallback;
 }
 function exportFilenameStem() {
@@ -3536,7 +3541,7 @@ async function switchToWheel(id, opts) {
   if (!(opts && opts.skipPersist)) {
     try { localStorage.setItem(localKeyCurrent(), id); } catch {}
   }
-  clientNameInput.value = state.client || '';
+  wheelNameInput.value = state.client || '';
   clientYearInput.value = state.year || new Date().getFullYear();
   refreshLayoutToggle();
   refreshWheelsList();
