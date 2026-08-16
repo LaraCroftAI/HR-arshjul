@@ -423,7 +423,26 @@ const I18N = {
 };
 
 let currentLang = (function() {
-  try { return localStorage.getItem('hrArshjulLang') === 'en' ? 'en' : 'sv'; } catch { return 'sv'; }
+  // Ett tidigare val vinner alltid.
+  try {
+    const saved = localStorage.getItem('hrArshjulLang');
+    if (saved === 'sv' || saved === 'en') return saved;
+  } catch {}
+  // Första besöket: följ webbläsarens språk i stället för att anta svenska.
+  // Den som inte läser svenska ska förstå inloggningsrutan direkt, utan att
+  // först behöva hitta språkväljaren. Allt utom svenska landar på engelska.
+  try {
+    const langs = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language];
+    for (const l of langs) {
+      if (!l) continue;
+      const base = String(l).toLowerCase().split('-')[0];
+      if (base === 'sv') return 'sv';
+      if (base === 'en') return 'en';
+    }
+    return 'en';
+  } catch { return 'sv'; }
 })();
 
 function t(key, vars) {
@@ -2884,6 +2903,13 @@ function setAuthMode(mode) {
   emailEl.placeholder = t('auth.emailPh');
   showAuthMessage('', false);
 }
+
+// Rita inloggningsrutan på valt språk direkt vid laddning. Rubrik, underrubrik,
+// knapp och placeholders sätts bara härifrån — de har inga data-i18n-attribut,
+// så applyI18n() når dem inte. Utan det här visades den hårdkodade svenskan
+// från index.html tills användaren klickade på något, även med EN valt.
+// Anropet måste ligga efter `let authMode` ovan, annars ReferenceError.
+setAuthMode(authMode);
 
 function translateAuthError(message) {
   const m = String(message || '').toLowerCase();

@@ -11,7 +11,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=68" />
+  <link rel="stylesheet" href="style.css?v=69" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -24,6 +24,10 @@
       <div class="auth-brand">
         <span class="brand-mark">○</span>
         <span class="brand-name" data-i18n="brand.name">HR Årshjul</span>
+        <div class="lang-toggle" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
+          <button type="button" class="lang-btn" data-lang="sv">SV</button>
+          <button type="button" class="lang-btn" data-lang="en">EN</button>
+        </div>
       </div>
       <h1 class="auth-title" id="authTitle">Logga in</h1>
       <p class="auth-sub" id="authSub">Logga in med din e-post och ditt lösenord.</p>
@@ -42,10 +46,6 @@
       </div>
       <div class="auth-toggle" id="authBackRow" hidden>
         <a href="#" id="authBackLink">← Tillbaka till inloggning</a>
-      </div>
-      <div class="lang-toggle" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
-        <button type="button" class="lang-btn" data-lang="sv">SV</button>
-        <button type="button" class="lang-btn" data-lang="en">EN</button>
       </div>
     </div>
   </div>
@@ -184,6 +184,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=68" defer></script>
+  <script src="app.js?v=69" defer></script>
 </body>
 </html>

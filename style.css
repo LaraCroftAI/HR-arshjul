@@ -815,10 +815,16 @@ h1, h2, h3 {
   background: #93392F;
   border-color: #93392F;
 }
-.auth-card .lang-toggle {
-  margin: 24px auto 0;
-  display: flex;
-  width: fit-content;
+/* Sprakvaljaren sitter hogst upp i inloggningskortet, i linje med logotypen.
+   Den lag forut langst ned under "Skapa konto" — den som inte laser svenska
+   hittade den aldrig, vilket var hela poangen med den. */
+.auth-brand .lang-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.auth-brand .lang-btn {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 .lang-toggle-topbar { align-self: center; }
 
