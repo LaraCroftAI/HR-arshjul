@@ -109,8 +109,8 @@ h1, h2, h3 {
   min-width: 0;
 }
 .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* Hjulets namn beskriver ett syfte ("Acme AB – onboarding"), inte bara ett
-   företagsnamn, så fältet behöver mer plats än det gamla Företag-fältet. */
+/* Hjulets namn beskriver vad hjulet avser, inte bara ett företagsnamn, så
+   fältet behöver mer plats än det gamla Företag-fältet. */
 #wheelName { width: 260px; }
 #clientYear { width: 90px; }
 .topbar-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
