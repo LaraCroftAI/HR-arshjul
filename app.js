@@ -117,6 +117,9 @@ const I18N = {
     'topbar.exportIcs': 'Som kalender (.ics)',
     'topbar.adminLink': 'Hantera användare',
     'topbar.logout': 'Logga ut',
+    'account.toggleAria': 'Konto',
+    'account.signedInAs': 'Inloggad som',
+    'account.roleAdmin': 'Administratör',
     'panel.rings.title': 'Ringar',
     'panel.rings.add': '+ Lägg till ring',
     'panel.rings.hint': 'Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön & förmåner.',
@@ -292,6 +295,9 @@ const I18N = {
     'topbar.exportIcs': 'As calendar (.ics)',
     'topbar.adminLink': 'Manage users',
     'topbar.logout': 'Sign out',
+    'account.toggleAria': 'Account',
+    'account.signedInAs': 'Signed in as',
+    'account.roleAdmin': 'Administrator',
     'panel.rings.title': 'Rings',
     'panel.rings.add': '+ Add ring',
     'panel.rings.hint': 'Each ring is a category — e.g. Work environment, Development, Compensation & benefits.',
@@ -701,6 +707,51 @@ document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
       setTimeout(() => document.body.classList.remove('menu-open'), 0);
     });
   });
+})();
+
+// ---------- Account menu ----------
+// Initialer till avataren: "eva.klevas@…" → "EK", "lara@…" → "LA".
+function initialsFromEmail(email) {
+  const local = String(email || '').split('@')[0];
+  const parts = local.split(/[._+-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return '?';
+}
+
+// Enda stället som skriver ut vem som är inloggad. Anropa med null vid utloggning.
+function setAccountIdentity(user) {
+  const email = (user && user.email) || '';
+  const emailEl = $('userEmail');
+  if (emailEl) emailEl.textContent = email;
+  const avatar = $('accountAvatar');
+  if (avatar) avatar.textContent = email ? initialsFromEmail(email) : '';
+  const btn = $('accountBtn');
+  if (btn) btn.title = email;
+}
+
+// Account dropdown — visar full e-post, ev. adminstatus, och utloggning
+(function setupAccountDropdown() {
+  const btn = $('accountBtn');
+  const menu = $('accountMenu');
+  if (!btn || !menu) return;
+  const setOpen = open => {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    setOpen(menu.hidden);
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+  // Återanvänd befintlig utloggning istället för att duplicera sign-out-logiken
+  const logout = $('accountLogoutBtn');
+  if (logout) logout.addEventListener('click', () => { setOpen(false); $('logoutBtn').click(); });
 })();
 
 // Wheels dropdown — list/switch/create/delete wheels
@@ -2947,7 +2998,7 @@ function setupAuthHandlers() {
         // Force the screen swap synchronously, BEFORE awaiting any wheel data.
         $('authScreen').hidden = true;
         $('appScreen').hidden = false;
-        $('userEmail').textContent = user.email || '';
+        setAccountIdentity(user);
         currentUser = user;
         // Load wheel + admin status in background; don't block UI swap on them
         loadUserWheel(user.id).catch(err => {
@@ -3248,10 +3299,21 @@ const KNOWN_ADMIN_EMAILS = new Set([
   'klevas.ai@outlook.com',
 ]);
 
+// Speglar isAdmin-flaggan på allt UI som beror på den — knappen, länken i
+// kontomenyn och rollmärket. En plats, så inget glöms bort.
+function applyAdminUi() {
+  const btn = $('adminBtn');
+  if (btn) btn.hidden = !isAdmin;
+  const link = $('adminLink');
+  if (link) link.hidden = !isAdmin;
+  const role = $('accountRole');
+  if (role) role.hidden = !isAdmin;
+}
+
 async function refreshAdminStatus() {
   if (!sb || !currentUser) {
     isAdmin = false;
-    $('adminBtn').hidden = true;
+    applyAdminUi();
     return;
   }
   const email = (currentUser.email || '').toLowerCase();
@@ -3259,9 +3321,7 @@ async function refreshAdminStatus() {
   // Snabb optimistisk check via mejl — visar knappen omedelbart för Lara.
   if (KNOWN_ADMIN_EMAILS.has(email)) {
     isAdmin = true;
-    $('adminBtn').hidden = false;
-    const link = $('adminLink');
-    if (link) link.hidden = false;
+    applyAdminUi();
   }
 
   // Bekräfta också via RPC (bästa möjliga; om den returnerar true håll knappen)
@@ -3269,9 +3329,7 @@ async function refreshAdminStatus() {
     const { data } = await sb.rpc('is_admin');
     if (data === true) {
       isAdmin = true;
-      $('adminBtn').hidden = false;
-      const link = $('adminLink');
-      if (link) link.hidden = false;
+      applyAdminUi();
     }
   } catch (err) {
     console.warn('refreshAdminStatus rpc exception:', err);
@@ -3290,7 +3348,7 @@ function onSignedOut() {
   currentWheelId = null;
   state = defaultState();
   isAdmin = false;
-  $('adminBtn').hidden = true;
+  applyAdminUi();
   showLoginScreen();
   // If we arrived from the admin page's "Glömt lösenord?" link, jump straight
   // into the reset flow so the user doesn't have to find the link again.
@@ -3309,14 +3367,14 @@ function onSignedOut() {
 function showAppScreen(user) {
   $('authScreen').hidden = true;
   $('appScreen').hidden = false;
-  $('userEmail').textContent = user.email || '';
+  setAccountIdentity(user);
   // Always re-check admin status when showing the app — never rely on the caller.
   refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
 }
 function showLoginScreen() {
   $('authScreen').hidden = false;
   $('appScreen').hidden = true;
-  $('userEmail').textContent = '';
+  setAccountIdentity(null);
 }
 
 function showAuthMessage(text, isError) {

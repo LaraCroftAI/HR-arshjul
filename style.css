@@ -805,13 +805,13 @@ h1, h2, h3 {
 }
 
 #logoutBtn {
-  background: var(--ink-soft);
+  background: var(--danger);
   color: #fff;
-  border-color: var(--ink-soft);
+  border-color: var(--danger);
 }
 #logoutBtn:hover {
-  background: #4A5366;
-  border-color: #4A5366;
+  background: #93392F;
+  border-color: #93392F;
 }
 .auth-card .lang-toggle {
   margin: 24px auto 0;
@@ -829,14 +829,69 @@ h1, h2, h3 {
   margin-left: 6px;
   border-left: 1px solid var(--line);
 }
-.user-email {
-  font-size: 12px;
-  color: var(--ink-soft);
-  max-width: 180px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+/* Account chip — initials avatar that opens the account menu. Replaces the
+   old truncated e-post i toppraden; hela adressen bor nu inne i menyn. */
+.account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px 3px 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  transition: background 120ms, border-color 120ms;
 }
+.account-btn:hover { background: var(--surface-soft); border-color: var(--line); }
+.account-btn[aria-expanded="true"] { background: var(--surface-soft); border-color: var(--line); }
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.account-caret { font-size: 10px; color: var(--ink-soft); }
+
+.account-menu { min-width: 250px; }
+.account-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px 10px;
+}
+.account-head-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.user-email {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  word-break: break-all;
+}
+.account-role {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+.account-menu a.dropdown-item { text-decoration: none; }
 
 /* ---------- Empty state ---------- */
 .empty {
@@ -872,9 +927,10 @@ h1, h2, h3 {
   .client-meta .field { flex: 1; }
   .client-meta input { width: 100% !important; min-width: 0; }
   .user-block { gap: 6px; padding-left: 6px; margin-left: 0; }
-  .user-block #adminLink,
-  .user-block #adminBtn,
-  .user-block .user-email { display: none; }
+  /* Kontochippet följer med ner på mobil — det är enda stället där man ser
+     vilket konto som är inloggat. Bara den gamla modal-knappen göms. */
+  .user-block #adminBtn { display: none; }
+  .account-menu { min-width: 220px; }
   .overflow-btn { display: inline-block; grid-area: menu; }
   .topbar-actions,
   .topbar-config {

@@ -11,7 +11,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=64" />
+  <link rel="stylesheet" href="style.css?v=65" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -69,9 +69,23 @@
         </label>
       </div>
       <div class="user-block">
-        <a id="adminLink" href="/admin.html" class="btn btn-ghost btn-small" hidden style="text-decoration:none" data-i18n="topbar.adminLink">Hantera användare</a>
         <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none" data-i18n="topbar.adminLink">Hantera användare</button>
-        <span id="userEmail" class="user-email"></span>
+        <div class="dropdown">
+          <button id="accountBtn" type="button" class="account-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria-label="account.toggleAria" aria-label="Konto">
+            <span id="accountAvatar" class="account-avatar" aria-hidden="true"></span>
+            <span class="account-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="accountMenu" class="dropdown-menu account-menu" hidden>
+            <div class="account-head">
+              <span class="account-head-label" data-i18n="account.signedInAs">Inloggad som</span>
+              <span id="userEmail" class="user-email"></span>
+              <span id="accountRole" class="account-role" hidden data-i18n="account.roleAdmin">Administratör</span>
+            </div>
+            <div class="dropdown-sep"></div>
+            <a id="adminLink" href="/admin.html" class="dropdown-item" hidden data-i18n="topbar.adminLink">Hantera användare</a>
+            <button id="accountLogoutBtn" class="dropdown-item" type="button" data-i18n="topbar.logout">Logga ut</button>
+          </div>
+        </div>
         <button id="logoutBtn" class="btn btn-ghost btn-small" type="button" data-i18n="topbar.logout">Logga ut</button>
       </div>
       <button id="overflowBtn" type="button" class="btn btn-ghost btn-small overflow-btn" aria-label="Meny">☰</button>
@@ -170,6 +184,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=64" defer></script>
+  <script src="app.js?v=65" defer></script>
 </body>
 </html>
