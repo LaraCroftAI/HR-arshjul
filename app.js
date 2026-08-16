@@ -107,7 +107,7 @@ const I18N = {
     'auth.err.generic': 'Något gick fel. Försök igen.',
     'topbar.wheelName': 'Namn på hjulet',
     'topbar.year': 'År',
-    'topbar.wheelNamePh': 't ex HR Activity Wheel',
+    'topbar.wheelNamePh': 't.ex. HR Activity Wheel',
     'topbar.newWheel': 'Nytt hjul',
     'topbar.uploadImage': 'Ladda upp bild',
     'topbar.export': 'Ladda ner ▾',
