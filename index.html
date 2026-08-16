@@ -11,7 +11,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=69" />
+  <link rel="stylesheet" href="style.css?v=71" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
@@ -46,6 +46,9 @@
       </div>
       <div class="auth-toggle" id="authBackRow" hidden>
         <a href="#" id="authBackLink">← Tillbaka till inloggning</a>
+      </div>
+      <div class="auth-legal">
+        <a href="/integritet.html" data-i18n="privacy.link">Om dina uppgifter</a>
       </div>
     </div>
   </div>
@@ -83,6 +86,7 @@
             </div>
             <div class="dropdown-sep"></div>
             <a id="adminLink" href="/admin.html" class="dropdown-item" hidden data-i18n="topbar.adminLink">Hantera användare</a>
+            <a href="/integritet.html" class="dropdown-item" data-i18n="privacy.link">Om dina uppgifter</a>
             <button id="accountLogoutBtn" class="dropdown-item" type="button" data-i18n="topbar.logout">Logga ut</button>
           </div>
         </div>
@@ -124,6 +128,18 @@
       <input id="fileInput" type="file" accept="image/png" hidden />
     </div>
   </header>
+
+  <!-- Gallringsbanner — visas bara när kontots tid börjar ta slut -->
+  <div id="retentionBanner" class="retention-banner" hidden>
+    <div class="retention-inner">
+      <span class="retention-icon" aria-hidden="true">◷</span>
+      <div class="retention-text">
+        <strong id="retentionTitle"></strong>
+        <span id="retentionBody"></span>
+      </div>
+      <button id="retentionRenewBtn" class="btn btn-primary btn-small" type="button"></button>
+    </div>
+  </div>
 
   <main class="layout">
     <section class="panel">
@@ -184,6 +200,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=69" defer></script>
+  <script src="app.js?v=71" defer></script>
 </body>
 </html>

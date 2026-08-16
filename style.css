@@ -826,6 +826,19 @@ h1, h2, h3 {
   padding: 4px 10px;
   font-size: 12px;
 }
+.auth-legal {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 12px;
+}
+.auth-legal a {
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-legal a:hover { color: var(--ink-soft); }
 .lang-toggle-topbar { align-self: center; }
 
 /* ---------- User block in topbar ---------- */
@@ -900,6 +913,56 @@ h1, h2, h3 {
   color: var(--accent-ink);
 }
 .account-menu a.dropdown-item { text-decoration: none; }
+
+/* ---------- Gallringsbanner ---------- */
+.retention-banner {
+  background: #FBF0D9;
+  border-bottom: 1px solid #E3CB92;
+}
+.retention-banner.is-locked {
+  background: #FBEDE9;
+  border-bottom-color: #E8C4BC;
+}
+.retention-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.retention-icon {
+  font-size: 18px;
+  color: #B68B47;
+  flex-shrink: 0;
+}
+.retention-banner.is-locked .retention-icon { color: var(--danger); }
+.retention-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6E5429;
+}
+.retention-banner.is-locked .retention-text { color: #7A2418; }
+.retention-text strong { display: block; font-size: 14px; margin-bottom: 1px; }
+#retentionRenewBtn { flex-shrink: 0; }
+
+/* Utgånget konto: hjulet går att läsa och exportera, men inte redigera.
+   Topbarens spar-/redigeringsknappar och hela inmatningspanelen låses. */
+body.retention-locked .panel,
+body.retention-locked #newBtn,
+body.retention-locked #uploadBtn {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 720px) {
+  .retention-inner { flex-wrap: wrap; padding: 10px 14px; gap: 10px; }
+  .retention-text { flex-basis: 100%; order: 2; }
+  #retentionRenewBtn { order: 3; }
+}
 
 /* ---------- Empty state ---------- */
 .empty {

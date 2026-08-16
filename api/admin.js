@@ -1,9 +1,11 @@
-// Vercel serverless function — proxy för admin-operationer.
+// Vercel serverless function — proxy för de RPC-anrop appen behöver.
 // Lara's webbläsarmiljö blockerar tyst direkta anrop till Supabase REST/RPC,
 // men Vercel når servern utan problem. Browsern → Vercel → Supabase.
 //
 // Vidarebefordrar användarens JWT så att RLS / SECURITY DEFINER-funktionerna
-// fortfarande gör admin-kontrollen i databasen.
+// fortfarande gör sina kontroller i databasen. Heter fortfarande admin.js av
+// historiska skäl; hanterar numera även gallringstiden (retention_*), som är
+// användarens egna anrop och inte kräver admin.
 
 const SUPABASE_URL = 'https://afcagjgztvmdpeljrjru.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__QjXJj6z2J2FaCyWvRVSWg_pbiIbHiI';
@@ -49,6 +51,12 @@ module.exports = async (req, res) => {
     if (!body.email) { res.status(400).json({ error: 'Mejladress saknas' }); return; }
     target = '/rest/v1/rpc/admin_remove_email';
     payload = JSON.stringify({ p_email: body.email });
+  } else if (action === 'retention_status') {
+    target = '/rest/v1/rpc/retention_status';
+    payload = '{}';
+  } else if (action === 'retention_renew') {
+    target = '/rest/v1/rpc/retention_renew';
+    payload = '{}';
   } else {
     res.status(400).json({ error: 'Okänd action' });
     return;

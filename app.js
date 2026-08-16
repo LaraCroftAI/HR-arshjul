@@ -120,6 +120,15 @@ const I18N = {
     'account.toggleAria': 'Konto',
     'account.signedInAs': 'Inloggad som',
     'account.roleAdmin': 'Administratör',
+    'privacy.link': 'Om dina uppgifter',
+    'retention.warnTitle': 'Dina uppgifter gallras {date}',
+    'retention.warnBody': '{days} dagar kvar. Förläng om du vill behålla dina hjul i ytterligare 24 månader.',
+    'retention.lockedTitle': 'Tiden har gått ut — hjulen är låsta',
+    'retention.lockedBody': 'Du kan läsa och ladda ner, men inte ändra. Uppgifterna raderas {date} om ingen förlänger.',
+    'retention.renew': 'Förläng 24 månader',
+    'retention.renewing': 'Förlänger…',
+    'retention.renewed': 'Förlängt — dina uppgifter sparas till {date}.',
+    'retention.renewFailed': 'Kunde inte förlänga. Försök igen om en stund.',
     'panel.rings.title': 'Ringar',
     'panel.rings.add': '+ Lägg till ring',
     'panel.rings.hint': 'Varje ring är en kategori — t.ex. Arbetsmiljö, Utveckling, Lön & förmåner.',
@@ -298,6 +307,15 @@ const I18N = {
     'account.toggleAria': 'Account',
     'account.signedInAs': 'Signed in as',
     'account.roleAdmin': 'Administrator',
+    'privacy.link': 'About your data',
+    'retention.warnTitle': 'Your data will be deleted on {date}',
+    'retention.warnBody': '{days} days left. Extend if you want to keep your wheels for another 24 months.',
+    'retention.lockedTitle': 'Time has run out — your wheels are locked',
+    'retention.lockedBody': 'You can still read and download, but not edit. The data is deleted on {date} unless someone extends it.',
+    'retention.renew': 'Extend by 24 months',
+    'retention.renewing': 'Extending…',
+    'retention.renewed': 'Extended — your data is kept until {date}.',
+    'retention.renewFailed': 'Could not extend. Please try again shortly.',
     'panel.rings.title': 'Rings',
     'panel.rings.add': '+ Add ring',
     'panel.rings.hint': 'Each ring is a category — e.g. Work environment, Development, Compensation & benefits.',
@@ -495,6 +513,7 @@ function setLanguage(lang) {
   if (typeof renderAll === 'function') renderAll();
   if (typeof setAuthMode === 'function') setAuthMode(authMode);
   if (typeof refreshLayoutToggle === 'function') refreshLayoutToggle();
+  if (typeof renderRetention === 'function') renderRetention();
 }
 
 // ---------- State ----------
@@ -584,6 +603,10 @@ async function getAccessToken() {
 }
 
 function saveState() {
+  // Utgånget konto är läsläge. CSS gör panelen oklickbar, men det här är den
+  // egentliga spärren — utan den skulle en tangentbordsgenväg eller ett
+  // dröjande event ändå kunna skriva.
+  if (isRetentionLocked()) return;
   saveLocal();          // immediate, reliable
   // Capture wheel id and a snapshot of state so a fast switch doesn't
   // accidentally save the new wheel's data to the previous wheel's row.
@@ -683,6 +706,7 @@ clientYearInput.value = state.year || new Date().getFullYear();
 wheelNameInput.addEventListener('input', () => { state.client = wheelNameInput.value; saveState(); renderWheel(); refreshWheelsList(); });
 clientYearInput.addEventListener('input', () => { state.year = +clientYearInput.value || new Date().getFullYear(); saveState(); renderWheel(); refreshWheelsList(); });
 
+$('retentionRenewBtn').addEventListener('click', () => renewRetention());
 $('addRingBtn').addEventListener('click', addRing);
 $('addActivityBtn').addEventListener('click', addActivity);
 $('addDayBtn').addEventListener('click', addDayActivity);
@@ -3037,6 +3061,7 @@ function setupAuthHandlers() {
           toast(t('toast.wheelLoadFailed'));
         });
         refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
+        refreshRetention().catch(err => console.error('refreshRetention failed:', err));
       } else {
         showAuthMessage(t('auth.sessionFailed'), true);
       }
@@ -3240,6 +3265,77 @@ async function callAdminApi(action, extra) {
   return data;
 }
 
+// ---------- Gallringstid ----------
+// Kontot har ett utgångsdatum som flyttas fram BARA när användaren själv
+// väljer att förlänga — inte av inloggning eller sparande. Statusen räknas ut
+// i databasen (retention_status), så en felställd klocka i webbläsaren kan
+// varken dölja varningen eller låsa någon i förtid.
+let retention = null;
+
+function isRetentionLocked() {
+  return !!retention && (retention.state === 'locked' || retention.state === 'purge');
+}
+
+function formatRetentionDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sv-SE',
+    { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+async function refreshRetention() {
+  if (!currentUser) { retention = null; renderRetention(); return; }
+  try {
+    retention = await callAdminApi('retention_status');
+  } catch (err) {
+    // Hellre ingen banner än en felaktig: kan vi inte läsa statusen vet vi
+    // inte om kontot är låst, och då ska ingenting spärras.
+    console.warn('retention_status misslyckades:', err.message || err);
+    retention = null;
+  }
+  renderRetention();
+}
+
+function renderRetention() {
+  const banner = $('retentionBanner');
+  if (!banner) return;
+
+  const locked = isRetentionLocked();
+  const show = !!retention && (retention.state === 'warning' || locked);
+
+  document.body.classList.toggle('retention-locked', locked);
+  banner.classList.toggle('is-locked', locked);
+  banner.hidden = !show;
+  if (!show) return;
+
+  $('retentionTitle').textContent = locked
+    ? t('retention.lockedTitle')
+    : t('retention.warnTitle', { date: formatRetentionDate(retention.expires_at) });
+  $('retentionBody').textContent = locked
+    ? t('retention.lockedBody', { date: formatRetentionDate(retention.delete_at) })
+    : t('retention.warnBody', { days: Math.max(0, retention.days_left || 0) });
+  $('retentionRenewBtn').textContent = t('retention.renew');
+}
+
+async function renewRetention() {
+  const btn = $('retentionRenewBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = t('retention.renewing');
+  try {
+    const res = await callAdminApi('retention_renew');
+    await refreshRetention();
+    toast(t('retention.renewed', { date: formatRetentionDate(res && res.expires_at) }));
+  } catch (err) {
+    console.warn('retention_renew misslyckades:', err.message || err);
+    toast(t('retention.renewFailed'));
+    btn.textContent = t('retention.renew');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function renderAdminEmailList() {
   const list = $('adminEmailList');
   list.innerHTML = `<li class="admin-email-empty">${escapeHtml(t('admin.loading'))}</li>`;
@@ -3380,6 +3476,8 @@ function onSignedOut() {
   state = defaultState();
   isAdmin = false;
   applyAdminUi();
+  retention = null;
+  renderRetention();
   showLoginScreen();
   // If we arrived from the admin page's "Glömt lösenord?" link, jump straight
   // into the reset flow so the user doesn't have to find the link again.
@@ -3401,6 +3499,7 @@ function showAppScreen(user) {
   setAccountIdentity(user);
   // Always re-check admin status when showing the app — never rely on the caller.
   refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
+  refreshRetention().catch(err => console.error('refreshRetention failed:', err));
 }
 function showLoginScreen() {
   $('authScreen').hidden = false;
