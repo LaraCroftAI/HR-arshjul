@@ -16,6 +16,13 @@ Det som tar mest tid i HR-vardagen är **administration**. Det är det jag vill 
 
 Håll koden enkel och läsbar. Filer ska kunna öppnas direkt i webbläsaren utan extra steg.
 
+### Inga tredjepartsanrop
+Teckensnitt (`fonts/`) och kodbibliotek (`vendor/`) ligger i repot och serveras från
+vår egen domän — inget laddas från Google Fonts, jsDelivr eller andra CDN:er. Skälet är
+integritet: annars skickas varje besökares IP-adress till dem redan innan inloggning.
+Lägg inte tillbaka en CDN-länk. Behöver ett bibliotek uppdateras, lägg den nya filen i
+`vendor/`; teckensnitten hämtas om med `node scripts/fetch-fonts.mjs`.
+
 ## Designprinciper
 **Stil: Proffsig men lättläst.** Stilren och seriös – ska kännas som ett verktyg en konsult tar med till en kunddialog – men aldrig på bekostnad av läsbarhet.
 

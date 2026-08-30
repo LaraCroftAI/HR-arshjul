@@ -1,0 +1,5 @@
+# Nedladdade bibliotek och teckensnitt ska ligga exakt som de hämtades.
+# Utan detta konverterar Git radsluten och filerna slutar vara byte-identiska
+# med det CDN:erna serverar, vilket gör dem omöjliga att verifiera.
+vendor/** -text
+fonts/*.woff2 -text
