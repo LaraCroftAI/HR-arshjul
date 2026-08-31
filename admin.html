@@ -40,6 +40,9 @@
     li button { padding: 4px 10px; font-size: 13px; color: #B0463A; border: 1px solid transparent; }
     li button:hover { border-color: #E8C4BC; background: #FBEDE9; }
     li small { color: #8C95A6; display: block; font-size: 11px; margin-top: 2px; }
+    li .acts { display: flex; gap: 6px; align-items: center; }
+    li button.invite { color: #6E5429; }
+    li button.invite:hover { border-color: #E3CB92; background: #FBF0D9; }
     .nav { margin-bottom: 24px; }
     .nav a { color: #6E5429; text-decoration: underline; }
   </style>
@@ -62,7 +65,7 @@
 
   <div class="card" id="adminCard" style="display:none">
     <h2 style="margin:0 0 8px; font-family:'Fraunces',serif; font-weight:500;">Bjud in ny</h2>
-    <p class="sub" style="margin:0 0 12px;">Säg till personen själv att de kan gå till sajten och skapa konto med valfritt lösenord.</p>
+    <p class="sub" style="margin:0 0 12px;">Lägg till adressen först. Skicka sedan inbjudan med ✉-knappen i listan nedan, så får personen instruktionerna per mejl.</p>
     <div class="row">
       <div>
         <label>E-post</label>
@@ -157,11 +160,17 @@
                        (row.notes ? '<small>' + escapeHtml(row.notes) + '</small>' : '') +
                        '<small>Inbjuden ' + date + '</small></div>' +
                        (isSelf ? '<span style="color:#8C95A6;font-size:12px">admin</span>'
-                               : '<button data-email="' + escapeHtml(row.email) + '">✕ ta bort</button>');
+                               : '<span class="acts">' +
+                                   '<button class="invite" data-invite="' + escapeHtml(row.email) + '">✉ Bjud in</button>' +
+                                   '<button data-email="' + escapeHtml(row.email) + '">✕ ta bort</button>' +
+                                 '</span>');
         list.appendChild(li);
       });
       list.querySelectorAll('button[data-email]').forEach(b => {
         b.addEventListener('click', () => removeEmail(b.dataset.email));
+      });
+      list.querySelectorAll('button[data-invite]').forEach(b => {
+        b.addEventListener('click', () => inviteEmail(b.dataset.invite, b));
       });
     } catch (err) {
       list.innerHTML = '<li style="color:#7A2418">Kunde inte hämta: ' + err.message + '</li>';
@@ -178,7 +187,7 @@
       await callApi('add', { email, notes: notes || null });
       $('addEmail').value = '';
       $('addNotes').value = '';
-      msg($('addMsg'), email + ' har lagts till. Säg till personen att de kan skapa konto på sajten.', true);
+      msg($('addMsg'), email + ' har lagts till. Klicka på ✉ Bjud in i listan för att skicka instruktionerna.', true);
       await loadList();
     } catch (err) {
       let m = err.message;
@@ -186,6 +195,24 @@
       msg($('addMsg'), m);
     } finally {
       $('addBtn').disabled = false;
+    }
+  }
+
+  async function inviteEmail(email, btn) {
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Skickar…";
+    msg($('addMsg'), '');
+    try {
+      await callApi('invite', { email });
+      btn.textContent = "✓ Skickat";
+      msg($('addMsg'), 'Inbjudan skickad till ' + email + '.', true);
+      // Knappen får stå kvar en stund som kvitto innan den går att klicka igen.
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 4000);
+    } catch (err) {
+      btn.textContent = original;
+      btn.disabled = false;
+      msg($('addMsg'), 'Kunde inte skicka till ' + email + ': ' + err.message);
     }
   }
 
