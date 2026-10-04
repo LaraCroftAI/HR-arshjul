@@ -265,6 +265,10 @@ const I18N = {
     'welcome.handbook': 'Läs handboken',
     'welcome.start': 'Sätt igång',
     'color.theme': 'Temafärger',
+    'color.standard': 'Standardfärger',
+    'color.wheel': 'Hjulets färger',
+    'color.lighter': 'Ljusare {n} %',
+    'color.darker': 'Mörkare {n} %',
     'color.used': 'Används i hjulet',
     'color.hex': 'Färgkod',
     'color.eyedropper': 'Hämta en färg från skärmen',
@@ -471,6 +475,10 @@ const I18N = {
     'welcome.handbook': 'Read the handbook',
     'welcome.start': 'Get started',
     'color.theme': 'Theme colours',
+    'color.standard': 'Standard colours',
+    'color.wheel': 'Wheel colours',
+    'color.lighter': 'Lighter {n}%',
+    'color.darker': 'Darker {n}%',
     'color.used': 'Used in this wheel',
     'color.hex': 'Colour code',
     'color.eyedropper': 'Pick a colour from the screen',
@@ -1235,19 +1243,72 @@ function renderActivities() {
 // input-event, så ring- och aktivitetshanterarna ovan är enda skrivvägen.
 const COLOR_INPUT_SELECTOR = '.ring-color-input, .activity-color-input';
 
-// Ljusare (80/60/40 % mot vitt) och mörkare (25/50 % mot svart), som i PowerPoint
-const COLOR_TINTS = [
-  { toward: 255, amount: 0.8 },
-  { toward: 255, amount: 0.6 },
-  { toward: 255, amount: 0.4 },
-  { toward: 0, amount: 0.25 },
-  { toward: 0, amount: 0.5 },
+// Office-temat som är förvalt i Microsoft 365 sedan 2023, avläst ur
+// "Office Theme.thmx": Bakgrund 1, Text 1, Bakgrund 2, Text 2, Dekorfärg 1–6.
+const OFFICE_THEME = [
+  '#FFFFFF', '#000000', '#E8E8E8', '#0E2841', '#156082',
+  '#E97132', '#196B24', '#0F9ED5', '#A02B93', '#4EA72E',
+];
+// Offices "Standardfärger" — samma i alla versioner
+const OFFICE_STANDARD = [
+  '#C00000', '#FF0000', '#FFC000', '#FFFF00', '#92D050',
+  '#00B050', '#00B0F0', '#0070C0', '#002060', '#7030A0',
 ];
 
-function mixHex(hex, toward, amount) {
+function hexToHsl(hex) {
   const { r, g, b } = hexToRgb(hex);
-  const mix = v => Math.round(v + (toward - v) * amount).toString(16).padStart(2, '0');
-  return '#' + mix(r) + mix(g) + mix(b);
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+  else if (max === gn) h = (bn - rn) / d + 2;
+  else h = (rn - gn) / d + 4;
+  return { h: h / 6, s, l };
+}
+
+function hslToHex(h, s, l) {
+  const hue = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue(p, q, h + 1 / 3); g = hue(p, q, h); b = hue(p, q, h - 1 / 3);
+  }
+  const x = v => Math.round(v * 255).toString(16).padStart(2, '0');
+  return '#' + x(r) + x(g) + x(b);
+}
+
+// Offices nyansregler: vilka steg en färg får beror på dess egen ljushet.
+// Positivt tal = ljusare, negativt = mörkare (procent).
+function officeShadeSteps(l) {
+  if (l <= 0) return [50, 35, 25, 15, 5];
+  if (l >= 1) return [-5, -15, -25, -35, -50];
+  if (l < 0.2) return [90, 75, 50, 25, 10];
+  if (l > 0.8) return [-10, -25, -50, -75, -90];
+  return [80, 60, 40, -25, -50];
+}
+
+// Som Offices lumMod/lumOff: ljushet i HSL flyttas mot vitt eller svart
+function officeShade(hex, step) {
+  const { h, s, l } = hexToHsl(hex);
+  const p = Math.abs(step) / 100;
+  return hslToHex(h, s, step > 0 ? l * (1 - p) + p : l * (1 - p));
+}
+
+function officeShadeLabel(step) {
+  return t(step > 0 ? 'color.lighter' : 'color.darker', { n: Math.abs(step) });
 }
 
 // "b8624a", "#B8624A", "#b64" → "#b8624a". Ogiltigt → null.
@@ -1271,10 +1332,11 @@ function buildColorMenu() {
   return el;
 }
 
-function swatchButton(hex, current) {
+function swatchButton(hex, current, label) {
   hex = hex.toLowerCase();
   const selected = hex === current;
-  return `<button type="button" class="color-swatch${selected ? ' is-selected' : ''}" data-color="${hex}" style="background:${hex}" title="${hex.toUpperCase()}" aria-label="${hex.toUpperCase()}"></button>`;
+  const title = escapeHtml((label ? label + ' · ' : '') + hex.toUpperCase());
+  return `<button type="button" class="color-swatch${selected ? ' is-selected' : ''}" data-color="${hex}" style="background:${hex}" title="${title}" aria-label="${title}"></button>`;
 }
 
 function openColorMenu(input) {
@@ -1282,32 +1344,45 @@ function openColorMenu(input) {
   colorMenuInput = input;
   const current = (input.value || '').toLowerCase();
 
-  // Kolumn per temafärg: grundfärgen överst, sedan nyanserna under
+  // Kolumn per temafärg: grundfärgen överst, sedan fem nyanser under, som i Office
+  const columns = OFFICE_THEME.map(base => ({
+    base,
+    shades: officeShadeSteps(hexToHsl(base).l).map(step => ({ hex: officeShade(base, step), step })),
+  }));
   let grid = '<div class="color-grid color-grid-base">' +
-    RING_PALETTE.map(c => swatchButton(c, current)).join('') + '</div>';
-  grid += '<div class="color-grid">' + COLOR_TINTS.map(tint =>
-    RING_PALETTE.map(c => swatchButton(mixHex(c, tint.toward, tint.amount), current)).join('')
-  ).join('') + '</div>';
+    columns.map(col => swatchButton(col.base, current)).join('') + '</div>';
+  grid += '<div class="color-grid">';
+  for (let row = 0; row < 5; row++) {
+    grid += columns.map(col => {
+      const shade = col.shades[row];
+      return swatchButton(shade.hex, current, officeShadeLabel(shade.step));
+    }).join('');
+  }
+  grid += '</div>';
 
-  // Färger i hjulet som inte redan finns bland temafärgerna
-  const themeSet = new Set();
-  RING_PALETTE.forEach(c => {
-    themeSet.add(c.toLowerCase());
-    COLOR_TINTS.forEach(tint => themeSet.add(mixHex(c, tint.toward, tint.amount)));
+  // Färger i hjulet som inte redan syns någon annanstans i menyn
+  const known = new Set([...OFFICE_STANDARD, ...RING_PALETTE].map(c => c.toLowerCase()));
+  columns.forEach(col => {
+    known.add(col.base.toLowerCase());
+    col.shades.forEach(s => known.add(s.hex));
   });
   const used = [];
   [...state.rings.map(r => r.color), ...state.activities.map(a => a.color)].forEach(c => {
     const hex = normalizeHex(c);
-    if (hex && !themeSet.has(hex) && !used.includes(hex)) used.push(hex);
+    if (hex && !known.has(hex) && !used.includes(hex)) used.push(hex);
   });
   const usedHtml = used.length ? `
     <div class="color-menu-label">${escapeHtml(t('color.used'))}</div>
-    <div class="color-grid">${used.slice(0, 16).map(c => swatchButton(c, current)).join('')}</div>` : '';
+    <div class="color-grid">${used.slice(0, 20).map(c => swatchButton(c, current)).join('')}</div>` : '';
 
   const hasEyeDropper = typeof window.EyeDropper === 'function';
   colorMenuEl.innerHTML = `
     <div class="color-menu-label">${escapeHtml(t('color.theme'))}</div>
     ${grid}
+    <div class="color-menu-label">${escapeHtml(t('color.standard'))}</div>
+    <div class="color-grid">${OFFICE_STANDARD.map(c => swatchButton(c, current)).join('')}</div>
+    <div class="color-menu-label">${escapeHtml(t('color.wheel'))}</div>
+    <div class="color-grid">${RING_PALETTE.map(c => swatchButton(c, current)).join('')}</div>
     ${usedHtml}
     <div class="color-menu-sep"></div>
     <div class="color-menu-row">
