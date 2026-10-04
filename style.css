@@ -914,6 +914,78 @@ h1, h2, h3 {
 }
 .account-menu a.dropdown-item { text-decoration: none; }
 
+/* ---------- Färgmeny (ringar och aktiviteter) ---------- */
+.color-menu {
+  position: fixed;
+  z-index: 80;
+  width: 232px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 10px 12px 8px;
+}
+.color-menu-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  margin: 2px 0 6px;
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  margin-bottom: 8px;
+}
+.color-grid-base { margin-bottom: 6px; }
+.color-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(20, 26, 40, 0.12);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+.color-swatch:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.color-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.color-swatch.is-selected { box-shadow: 0 0 0 2px #fff inset; outline: 2px solid var(--ink); outline-offset: 0; }
+.color-menu-sep { height: 1px; background: var(--line); margin: 2px -12px 10px; }
+.color-menu-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 6px; }
+.color-preview {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.color-hex { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.color-hex span { font-size: 11px; color: var(--ink-faint); }
+.color-hex-input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+}
+.color-hex-input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.color-hex-input.is-invalid { border-color: var(--danger); outline-color: var(--danger); }
+.color-eyedropper {
+  width: 32px;
+  height: 30px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.color-more { width: 100%; text-align: left; }
+
 /* ---------- Hjälp: ?-knappen och välkomstrutan ---------- */
 .help-btn {
   width: 30px;

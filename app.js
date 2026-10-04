@@ -264,6 +264,11 @@ const I18N = {
     'welcome.foot': 'Du hittar den här rutan och handboken igen under ?-knappen.',
     'welcome.handbook': 'Läs handboken',
     'welcome.start': 'Sätt igång',
+    'color.theme': 'Temafärger',
+    'color.used': 'Används i hjulet',
+    'color.hex': 'Färgkod',
+    'color.eyedropper': 'Hämta en färg från skärmen',
+    'color.more': 'Fler färger…',
   },
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -465,6 +470,11 @@ const I18N = {
     'welcome.foot': 'You can find this box and the handbook again under the ? button.',
     'welcome.handbook': 'Read the handbook',
     'welcome.start': 'Get started',
+    'color.theme': 'Theme colours',
+    'color.used': 'Used in this wheel',
+    'color.hex': 'Colour code',
+    'color.eyedropper': 'Pick a colour from the screen',
+    'color.more': 'More colours…',
   },
 };
 
@@ -1216,6 +1226,212 @@ function renderActivities() {
     });
   });
 }
+
+// ---------- Färgmeny ----------
+// Ersätter webbläsarens egen färgväljare med en meny i PowerPoint-stil:
+// temafärger med nyanser, färger som redan används i hjulet, färgkod,
+// pipett och "Fler färger…". Menyn skriver aldrig till state själv — den
+// sätter värdet på rutans dolda <input type=color> och skickar ett
+// input-event, så ring- och aktivitetshanterarna ovan är enda skrivvägen.
+const COLOR_INPUT_SELECTOR = '.ring-color-input, .activity-color-input';
+
+// Ljusare (80/60/40 % mot vitt) och mörkare (25/50 % mot svart), som i PowerPoint
+const COLOR_TINTS = [
+  { toward: 255, amount: 0.8 },
+  { toward: 255, amount: 0.6 },
+  { toward: 255, amount: 0.4 },
+  { toward: 0, amount: 0.25 },
+  { toward: 0, amount: 0.5 },
+];
+
+function mixHex(hex, toward, amount) {
+  const { r, g, b } = hexToRgb(hex);
+  const mix = v => Math.round(v + (toward - v) * amount).toString(16).padStart(2, '0');
+  return '#' + mix(r) + mix(g) + mix(b);
+}
+
+// "b8624a", "#B8624A", "#b64" → "#b8624a". Ogiltigt → null.
+function normalizeHex(raw) {
+  let s = String(raw || '').trim().replace(/^#/, '').toLowerCase();
+  if (/^[0-9a-f]{3}$/.test(s)) s = s.split('').map(ch => ch + ch).join('');
+  return /^[0-9a-f]{6}$/.test(s) ? '#' + s : null;
+}
+
+let colorMenuInput = null;   // den dolda <input type=color> menyn just nu styr
+let colorMenuEl = null;
+let colorMenuAllowNative = false;
+
+function buildColorMenu() {
+  const el = document.createElement('div');
+  el.className = 'color-menu';
+  el.hidden = true;
+  el.setAttribute('role', 'dialog');
+  document.body.appendChild(el);
+  el.addEventListener('click', e => e.stopPropagation());
+  return el;
+}
+
+function swatchButton(hex, current) {
+  hex = hex.toLowerCase();
+  const selected = hex === current;
+  return `<button type="button" class="color-swatch${selected ? ' is-selected' : ''}" data-color="${hex}" style="background:${hex}" title="${hex.toUpperCase()}" aria-label="${hex.toUpperCase()}"></button>`;
+}
+
+function openColorMenu(input) {
+  if (!colorMenuEl) colorMenuEl = buildColorMenu();
+  colorMenuInput = input;
+  const current = (input.value || '').toLowerCase();
+
+  // Kolumn per temafärg: grundfärgen överst, sedan nyanserna under
+  let grid = '<div class="color-grid color-grid-base">' +
+    RING_PALETTE.map(c => swatchButton(c, current)).join('') + '</div>';
+  grid += '<div class="color-grid">' + COLOR_TINTS.map(tint =>
+    RING_PALETTE.map(c => swatchButton(mixHex(c, tint.toward, tint.amount), current)).join('')
+  ).join('') + '</div>';
+
+  // Färger i hjulet som inte redan finns bland temafärgerna
+  const themeSet = new Set();
+  RING_PALETTE.forEach(c => {
+    themeSet.add(c.toLowerCase());
+    COLOR_TINTS.forEach(tint => themeSet.add(mixHex(c, tint.toward, tint.amount)));
+  });
+  const used = [];
+  [...state.rings.map(r => r.color), ...state.activities.map(a => a.color)].forEach(c => {
+    const hex = normalizeHex(c);
+    if (hex && !themeSet.has(hex) && !used.includes(hex)) used.push(hex);
+  });
+  const usedHtml = used.length ? `
+    <div class="color-menu-label">${escapeHtml(t('color.used'))}</div>
+    <div class="color-grid">${used.slice(0, 16).map(c => swatchButton(c, current)).join('')}</div>` : '';
+
+  const hasEyeDropper = typeof window.EyeDropper === 'function';
+  colorMenuEl.innerHTML = `
+    <div class="color-menu-label">${escapeHtml(t('color.theme'))}</div>
+    ${grid}
+    ${usedHtml}
+    <div class="color-menu-sep"></div>
+    <div class="color-menu-row">
+      <span class="color-preview" style="background:${current}"></span>
+      <label class="color-hex">
+        <span>${escapeHtml(t('color.hex'))}</span>
+        <input type="text" class="color-hex-input" value="${current.toUpperCase()}" maxlength="7" spellcheck="false" autocomplete="off" />
+      </label>
+      ${hasEyeDropper ? `<button type="button" class="btn-icon color-eyedropper" title="${escapeHtml(t('color.eyedropper'))}" aria-label="${escapeHtml(t('color.eyedropper'))}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5"/><path d="M17.8 2.7a2.4 2.4 0 0 1 3.5 3.5l-2.6 2.6-3.5-3.5z"/><path d="M15.2 7.8L5.5 17.5 4 21l3.5-1.5 9.7-9.7"/></svg>
+      </button>` : ''}
+    </div>
+    <button type="button" class="dropdown-item color-more">${escapeHtml(t('color.more'))}</button>
+  `;
+
+  colorMenuEl.querySelectorAll('.color-swatch').forEach(b => {
+    b.addEventListener('click', () => { applyMenuColor(b.dataset.color); closeColorMenu(); });
+  });
+
+  const hexInput = colorMenuEl.querySelector('.color-hex-input');
+  hexInput.addEventListener('input', () => {
+    const hex = normalizeHex(hexInput.value);
+    // Uppdatera hjulet direkt vid fullständig kod, men inte vid "#b64" mitt i skrivandet
+    const complete = hex && hexInput.value.replace('#', '').length === 6;
+    hexInput.classList.toggle('is-invalid', !hex && hexInput.value.replace('#', '').length >= 6);
+    if (complete) applyMenuColor(hex);
+  });
+  hexInput.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const hex = normalizeHex(hexInput.value);
+    if (hex) { applyMenuColor(hex); closeColorMenu(); }
+    else hexInput.classList.add('is-invalid');
+  });
+
+  const dropper = colorMenuEl.querySelector('.color-eyedropper');
+  if (dropper) dropper.addEventListener('click', async () => {
+    const target = colorMenuInput;
+    try {
+      // open() måste anropas direkt i klicket — webbläsaren kräver en användargest
+      const result = await new window.EyeDropper().open();
+      const hex = normalizeHex(result && result.sRGBHex);
+      if (hex && target && target.isConnected) { colorMenuInput = target; applyMenuColor(hex); }
+    } catch { /* användaren tryckte Escape */ }
+    closeColorMenu();
+  });
+
+  colorMenuEl.querySelector('.color-more').addEventListener('click', () => {
+    const target = colorMenuInput;
+    closeColorMenu();
+    colorMenuAllowNative = true;
+    try {
+      if (typeof target.showPicker === 'function') target.showPicker();
+      else target.click();
+    } catch { target.click(); }
+    colorMenuAllowNative = false;
+  });
+
+  colorMenuEl.hidden = false;
+  positionColorMenu(input.parentElement);
+  hexInput.focus();
+  hexInput.select();
+}
+
+function positionColorMenu(anchor) {
+  const r = anchor.getBoundingClientRect();
+  const m = colorMenuEl.getBoundingClientRect();
+  const pad = 8;
+  let left = r.left;
+  let top = r.bottom + 6;
+  if (left + m.width > window.innerWidth - pad) left = window.innerWidth - pad - m.width;
+  if (top + m.height > window.innerHeight - pad) top = Math.max(pad, r.top - 6 - m.height);
+  colorMenuEl.style.left = Math.max(pad, left) + 'px';
+  colorMenuEl.style.top = top + 'px';
+}
+
+function applyMenuColor(hex) {
+  const input = colorMenuInput;
+  if (!input || !input.isConnected) return;
+  input.value = hex;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  if (!colorMenuEl || colorMenuEl.hidden) return;
+  const preview = colorMenuEl.querySelector('.color-preview');
+  if (preview) preview.style.background = hex;
+  colorMenuEl.querySelectorAll('.color-swatch').forEach(b => {
+    b.classList.toggle('is-selected', b.dataset.color === hex);
+  });
+}
+
+function closeColorMenu() {
+  if (!colorMenuEl || colorMenuEl.hidden) return;
+  colorMenuEl.hidden = true;
+  const input = colorMenuInput;
+  colorMenuInput = null;
+  if (input && input.isConnected) input.focus();
+}
+
+// Fånga klick på färgrutorna innan webbläsarens egen väljare hinner öppnas
+document.addEventListener('click', e => {
+  const input = e.target.closest && e.target.closest(COLOR_INPUT_SELECTOR);
+  if (input) {
+    if (colorMenuAllowNative) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (colorMenuInput === input && colorMenuEl && !colorMenuEl.hidden) closeColorMenu();
+    else openColorMenu(input);
+    return;
+  }
+  if (colorMenuEl && !colorMenuEl.hidden && !colorMenuEl.contains(e.target)) closeColorMenu();
+}, true);
+document.addEventListener('keydown', e => {
+  const input = e.target.closest && e.target.closest(COLOR_INPUT_SELECTOR);
+  if (input && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    openColorMenu(input);
+    return;
+  }
+  if (e.key === 'Escape') closeColorMenu();
+}, true);
+// Menyn är fast positionerad — stäng hellre än att den svävar fel vid scroll
+window.addEventListener('resize', closeColorMenu);
+document.addEventListener('scroll', e => {
+  if (colorMenuEl && !colorMenuEl.contains(e.target)) closeColorMenu();
+}, true);
 
 function renderActivitySelects() {
   // refresh dropdowns when ring names change
