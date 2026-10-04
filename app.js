@@ -21,6 +21,26 @@ const RING_PALETTE = [
   '#A89F8E', // sten
 ];
 
+// Startfärger för nya ringar: dekorfärgerna i Office-temat (2023–), sedan
+// Text 2. Jordtonerna ovan ligger kvar som "Hjulets färger" i färgmenyn.
+const NEW_RING_PALETTE = [
+  '#156082', // petrol    (Dekorfärg 1)
+  '#E97132', // orange    (Dekorfärg 2)
+  '#196B24', // mörkgrön  (Dekorfärg 3)
+  '#0F9ED5', // ljusblå   (Dekorfärg 4)
+  '#A02B93', // magenta   (Dekorfärg 5)
+  '#4EA72E', // grön      (Dekorfärg 6)
+  '#0E2841', // marinblå  (Text 2)
+];
+
+// Första startfärg som inte redan används; går runt när alla är tagna.
+// Jämför med gemener — <input type=color> sparar färger med gemener.
+function nextRingColor(usedColors) {
+  const used = usedColors.map(c => String(c || '').toLowerCase());
+  return NEW_RING_PALETTE.find(c => !used.includes(c.toLowerCase()))
+    || NEW_RING_PALETTE[usedColors.length % NEW_RING_PALETTE.length];
+}
+
 // Agenda layout uses one unique color per activity. The palette below extends
 // the muted earthy tone of the ring palette so 17–20 activities still look
 // cohesive. Cycles for activity counts beyond the palette length.
@@ -574,9 +594,9 @@ function defaultState() {
     year: new Date().getFullYear(),
     layout: 'wheel',
     rings: [
-      { id: rid(), name: t('default.ring.workEnv'), color: RING_PALETTE[1] },
-      { id: rid(), name: t('default.ring.development'), color: RING_PALETTE[0] },
-      { id: rid(), name: t('default.ring.compensation'), color: RING_PALETTE[2] },
+      { id: rid(), name: t('default.ring.workEnv'), color: NEW_RING_PALETTE[0] },
+      { id: rid(), name: t('default.ring.development'), color: NEW_RING_PALETTE[1] },
+      { id: rid(), name: t('default.ring.compensation'), color: NEW_RING_PALETTE[2] },
     ],
     activities: [
       { id: rid(), name: t('default.activity.review'), ringId: null, startWeek: 8, lengthWeeks: 4 },
@@ -2344,8 +2364,7 @@ async function handleActivitiesImport(e) {
     let skipped = 0;
 
     const usedColors = () => [...state.rings, ...newRings].map(r => r.color);
-    const nextColor = () => RING_PALETTE.find(c => !usedColors().includes(c))
-      || RING_PALETTE[(state.rings.length + newRings.length) % RING_PALETTE.length];
+    const nextColor = () => nextRingColor(usedColors());
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -2624,7 +2643,7 @@ function setupActivityDragAndDrop() {
 // ---------- Add handlers ----------
 function addRing() {
   const usedColors = state.rings.map(r => r.color);
-  const color = RING_PALETTE.find(c => !usedColors.includes(c)) || RING_PALETTE[state.rings.length % RING_PALETTE.length];
+  const color = nextRingColor(usedColors);
   state.rings.unshift({ id: rid(), name: t('default.ring.new'), color });
   saveState(); renderAll();
   // focus the new (top) name input

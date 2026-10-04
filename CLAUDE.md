@@ -29,7 +29,7 @@ Lägg inte tillbaka en CDN-länk. Behöver ett bibliotek uppdateras, lägg den n
 - Bakgrund: ljus (off-white, inte rent vit) — bra läsbarhet
 - Typografi: tydlig hierarki, generös radhöjd, sans-serif som primärt typsnitt
 - Färgpalett: dämpade, sofistikerade toner — djup grafit/marin som primär, varm accent
-- Ringfärger: muted, jordiga (slate, sage, terracotta, ockra, dimblå, plommon) — inga skrikiga färger
+- Ringfärger: nya ringar startar med dekorfärgerna i Microsoft Offices nuvarande tema (`NEW_RING_PALETTE`) — Laras val 2026-10-04, eftersom jordtonerna upplevdes för dova och hjulen ska passa ihop med kundernas Office-dokument. Jordtonerna (slate, sage, terracotta, ockra, dimblå, plommon) finns kvar som "Hjulets färger" i färgmenyn.
 - Mycket luft, tunna linjer, subtila skuggor
 - Knappar och formulär: tydliga men inte högljudda
 
