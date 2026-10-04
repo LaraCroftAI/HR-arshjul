@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>HR Årshjul — Handbok</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
+  <link rel="stylesheet" href="fonts/fonts.css?v=73" />
+  <style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #FAF8F4;
+      color: #1A2332;
+      padding: 32px 24px 72px;
+      max-width: 720px;
+      margin: 0 auto;
+      line-height: 1.65;
+    }
+    h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 28px; margin: 0 0 4px; }
+    h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 19px; margin: 0 0 8px; scroll-margin-top: 16px; }
+    h3 { font-size: 14px; font-weight: 600; margin: 18px 0 4px; }
+    p { margin: 0 0 12px; }
+    .sub { color: #5C6577; margin: 0 0 24px; font-size: 14px; }
+    .card { background: #fff; border: 1px solid #E5E0D7; border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(20,26,40,.04); }
+    ul, ol { margin: 0 0 12px; padding-left: 20px; }
+    li { margin-bottom: 7px; }
+    a { color: #6E5429; }
+    .nav { margin-bottom: 22px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .nav a { color: #6E5429; text-decoration: underline; }
+    .lang { margin-left: auto; display: inline-flex; border: 1px solid #D9D3C7; border-radius: 999px; overflow: hidden; background: #fff; }
+    .lang button { border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 12px; cursor: pointer; color: #1A2332; }
+    .lang button.active { background: #1A2332; color: #fff; }
+    .note { background: #F4F1EB; border-left: 3px solid #B68B47; padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 14px; margin: 0 0 12px; }
+    .toc { columns: 2; column-gap: 24px; padding-left: 0; list-style: none; margin: 0; font-size: 14px; }
+    .toc li { margin-bottom: 6px; break-inside: avoid; }
+    .ui { display: inline-block; font-size: 13px; font-weight: 500; padding: 0 7px; border: 1px solid #D9D3C7; border-radius: 5px; background: #FAF8F4; white-space: nowrap; line-height: 1.6; }
+    .steps { counter-reset: step; list-style: none; padding-left: 0; }
+    .steps li { counter-increment: step; position: relative; padding-left: 38px; margin-bottom: 14px; }
+    .steps li::before {
+      content: counter(step); position: absolute; left: 0; top: 1px;
+      width: 26px; height: 26px; border-radius: 50%; background: #1A2332; color: #fff;
+      font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+    }
+    footer { color: #8C95A6; font-size: 13px; margin-top: 32px; }
+    @media (max-width: 520px) { .toc { columns: 1; } }
+  </style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="/" id="backLink">← Tillbaka till HR Årshjul</a>
+  <span class="lang" role="group" aria-label="Välj språk / Choose language">
+    <button type="button" data-lang="sv">SV</button>
+    <button type="button" data-lang="en">EN</button>
+  </span>
+</div>
+
+<!-- ============================ SVENSKA ============================ -->
+<div id="sv">
+  <h1>Handbok</h1>
+  <p class="sub">Allt du kan göra i HR Årshjul, och hur du gör det.</p>
+
+  <div class="card">
+    <ul class="toc">
+      <li><a href="#sv-start">Kom igång</a></li>
+      <li><a href="#sv-ringar">Ringar</a></li>
+      <li><a href="#sv-aktiviteter">Aktiviteter</a></li>
+      <li><a href="#sv-import">Importera från Excel</a></li>
+      <li><a href="#sv-utseende">Hjulets utseende</a></li>
+      <li><a href="#sv-hjul">Flera hjul och nytt år</a></li>
+      <li><a href="#sv-ladda-ner">Ladda ner och dela</a></li>
+      <li><a href="#sv-spara">Sparande och konto</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-start">Kom igång</h2>
+    <p>Första gången du loggar in får du ett färdigt exempelhjul. Det enklaste sättet att lära sig är att göra om det till ditt eget.</p>
+    <ol class="steps">
+      <li><strong>Ge hjulet ett namn.</strong> Skriv i fältet <span class="ui">Namn på hjulet</span> högst upp och välj <span class="ui">År</span>. Namnet syns mitt i hjulet och på allt du laddar ner.</li>
+      <li><strong>Gör ringar och aktiviteter till dina egna.</strong> Byt namn direkt i listan, ta bort det du inte behöver med <span class="ui">✕</span> och lägg till nytt med <span class="ui">+ Period</span> eller <span class="ui">+ Dag</span>. Hjulet ritas om medan du skriver.</li>
+      <li><strong>Ladda ner.</strong> Under <span class="ui">Ladda ner ▾</span> får du hjulet som bild, PDF, PowerPoint eller kalenderfil.</li>
+    </ol>
+    <p>Du behöver aldrig spara — allt sparas automatiskt.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-ringar">Ringar</h2>
+    <p>En ring är en kategori av aktiviteter, till exempel <em>Arbetsmiljö</em>, <em>Utveckling</em> eller <em>Lön &amp; förmåner</em>. Varje aktivitet hör till en ring.</p>
+    <ul>
+      <li><strong>Lägg till:</strong> klicka <span class="ui">+ Lägg till ring</span>.</li>
+      <li><strong>Byt namn:</strong> skriv direkt i namnfältet.</li>
+      <li><strong>Byt färg:</strong> klicka på den färgade rutan till vänster om namnet.</li>
+      <li><strong>Ändra ordning:</strong> dra i handtaget <span class="ui">⋮⋮</span>. Ringen överst i listan hamnar ytterst i hjulet.</li>
+      <li><strong>Ta bort:</strong> klicka <span class="ui">✕</span>. Alla aktiviteter i ringen försvinner också, så du får bekräfta först.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-aktiviteter">Aktiviteter</h2>
+    <p>Aktiviteter finns i två typer:</p>
+    <ul>
+      <li><strong>Period</strong> — något som pågår en tid, med start- och slutdatum. Ritas som en båge i ringen. Lägg till med <span class="ui">+ Period</span>.</li>
+      <li><strong>Dag</strong> — något som sker ett visst datum, som ett styrelsemöte eller en deadline. Ritas som en rund markering med ett nummer. Lägg till med <span class="ui">+ Dag</span>.</li>
+    </ul>
+    <h3>Redigera en aktivitet</h3>
+    <ul>
+      <li>Skriv namnet direkt i fältet, välj <strong>Ring</strong> och fyll i datum.</li>
+      <li>Ändrade du dig om typen? Byt mellan Period och Dag i fältet <strong>Typ</strong> — aktiviteten behåller sin plats.</li>
+      <li><strong>Egen färg:</strong> klicka på färgrutan. Annars får aktiviteten sin rings färg. <span class="ui">↺</span> återställer.</li>
+      <li><strong>Ordning i listan:</strong> dra i <span class="ui">⋮⋮</span>.</li>
+      <li><strong>Ta bort:</strong> klicka <span class="ui">✕</span>.</li>
+    </ul>
+    <p>Överlappar två perioder i samma ring läggs de i varsitt spår, så att ingen döljer den andra.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-import">Importera från Excel</h2>
+    <p>Har du redan aktiviteterna i ett kalkylark slipper du skriva in dem en och en.</p>
+    <ol>
+      <li>Klicka <span class="ui">Hämta mallen</span> under rubriken Aktiviteter. Du får en Excel-fil med kolumnerna <strong>Aktivitet</strong>, <strong>Ring</strong>, <strong>Typ</strong>, <strong>Startdatum</strong> och <strong>Slutdatum</strong>.</li>
+      <li>Fyll i en rad per aktivitet. För en <em>Dag</em> räcker startdatum.</li>
+      <li>Klicka <span class="ui">Importera</span> och välj filen (xlsx eller csv).</li>
+    </ol>
+    <p>Aktiviteterna läggs till bland dem du redan har — inget skrivs över. Ringar som inte finns skapas automatiskt.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-utseende">Hjulets utseende</h2>
+    <p>Under <span class="ui">Layout ▾</span> väljer du hur hjulet ritas:</p>
+    <ul>
+      <li><strong>Klassisk</strong> — en ring per kategori, med aktiviteterna i sina ringar.</li>
+      <li><strong>Agenda</strong> — varje aktivitet får en egen färg och listas vid sidan av hjulet. Passar när det är många aktiviteter.</li>
+      <li><strong>Text vid sidan</strong> — flyttar aktiviteternas namn från hjulet till en numrerad lista bredvid. Bra när namnen är långa.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-hjul">Flera hjul och nytt år</h2>
+    <p>Du kan ha hur många hjul du vill, till exempel ett per kund eller syfte. Under <span class="ui">Hjul: … ▾</span> ser du alla dina hjul:</p>
+    <ul>
+      <li><strong>Byt hjul:</strong> klicka på hjulets namn.</li>
+      <li><strong>Nytt hjul:</strong> <span class="ui">+ Nytt hjul</span> i menyn, eller knappen <span class="ui">Nytt hjul</span>. Det nya hjulet är tomt; dina andra hjul ligger kvar.</li>
+      <li><strong>Kopiera till ett nytt år:</strong> klicka <span class="ui">⧉</span> och ange år. Alla datum flyttas till det nya året, så du slipper bygga om hjulet varje år.</li>
+      <li><strong>Ta bort:</strong> klicka <span class="ui">✕</span>. Det går inte att ångra.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-ladda-ner">Ladda ner och dela</h2>
+    <p>Under <span class="ui">Ladda ner ▾</span>:</p>
+    <ul>
+      <li><strong>Som bild (PNG)</strong> — för e-post, intranät eller dokument.</li>
+      <li><strong>Som PDF</strong> — A4 liggande, redo att skriva ut.</li>
+      <li><strong>Som PowerPoint</strong> — en bild i 16:9 att lägga in i en presentation.</li>
+      <li><strong>Som kalender (.ics)</strong> — alla aktiviteter som kalenderhändelser, för Outlook eller Google Kalender.</li>
+    </ul>
+    <div class="note">
+      <strong>Bilden är också en sparfil.</strong> En PNG som laddats ner från appen bär med sig hela hjulet.
+      Med <span class="ui">Ladda upp bild</span> öppnar du den igen och kan fortsätta redigera —
+      även på ett annat konto. Så kan du ge ett hjul till en kollega.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="sv-spara">Sparande och konto</h2>
+    <ul>
+      <li>Allt sparas automatiskt och kopplas till ditt konto, så du når dina hjul från vilken dator som helst.</li>
+      <li>Språk byter du med <span class="ui">SV</span> / <span class="ui">EN</span>.</li>
+      <li>Ditt konto når du via den runda knappen med dina initialer längst upp till höger. Där loggar du ut.</li>
+      <li>Uppgifterna sparas i 24 månader. Innan tiden går ut visas en påminnelse med en knapp för att förlänga. Läs mer under <a href="/integritet.html">Om dina uppgifter</a>.</li>
+    </ul>
+    <div class="note">
+      Aktiviteter är fritext. Skriv inte in namn på enskilda personer om det inte behövs —
+      skriv hellre <em>Medarbetarsamtal</em> än vem samtalet gäller.
+    </div>
+    <p>Hittar du inte det du letar efter? Hör av dig till <a href="mailto:klevas.ai@outlook.com">klevas.ai@outlook.com</a>.</p>
+  </div>
+
+  <footer>HR Årshjul — Klevås Consulting AB</footer>
+</div>
+
+<!-- ============================ ENGLISH ============================ -->
+<div id="en" hidden>
+  <h1>Handbook</h1>
+  <p class="sub">Everything you can do in HR Årshjul, and how to do it.</p>
+
+  <div class="card">
+    <ul class="toc">
+      <li><a href="#en-start">Getting started</a></li>
+      <li><a href="#en-rings">Rings</a></li>
+      <li><a href="#en-activities">Activities</a></li>
+      <li><a href="#en-import">Import from Excel</a></li>
+      <li><a href="#en-look">How the wheel looks</a></li>
+      <li><a href="#en-wheels">Several wheels and a new year</a></li>
+      <li><a href="#en-download">Download and share</a></li>
+      <li><a href="#en-saving">Saving and your account</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="en-start">Getting started</h2>
+    <p>The first time you sign in you get a ready-made example wheel. The easiest way to learn is to turn it into your own.</p>
+    <ol class="steps">
+      <li><strong>Name the wheel.</strong> Type in the <span class="ui">Wheel name</span> field at the top and pick the <span class="ui">Year</span>. The name appears in the centre of the wheel and on everything you download.</li>
+      <li><strong>Make the rings and activities your own.</strong> Rename them right in the list, remove what you don't need with <span class="ui">✕</span>, and add new ones with <span class="ui">+ Period</span> or <span class="ui">+ Day</span>. The wheel redraws as you type.</li>
+      <li><strong>Download.</strong> Under <span class="ui">Download ▾</span> you get the wheel as an image, PDF, PowerPoint or calendar file.</li>
+    </ol>
+    <p>You never need to save — everything is saved automatically.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="en-rings">Rings</h2>
+    <p>A ring is a category of activities, such as <em>Work environment</em>, <em>Development</em> or <em>Compensation &amp; benefits</em>. Every activity belongs to a ring.</p>
+    <ul>
+      <li><strong>Add:</strong> click <span class="ui">+ Add ring</span>.</li>
+      <li><strong>Rename:</strong> type straight into the name field.</li>
+      <li><strong>Change colour:</strong> click the coloured square to the left of the name.</li>
+      <li><strong>Reorder:</strong> drag the handle <span class="ui">⋮⋮</span>. The ring at the top of the list ends up outermost on the wheel.</li>
+      <li><strong>Remove:</strong> click <span class="ui">✕</span>. All activities in the ring go too, so you are asked to confirm first.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="en-activities">Activities</h2>
+    <p>Activities come in two types:</p>
+    <ul>
+      <li><strong>Period</strong> — something that runs for a while, with a start and end date. Drawn as an arc in its ring. Add with <span class="ui">+ Period</span>.</li>
+      <li><strong>Day</strong> — something that happens on a specific date, like a board meeting or a deadline. Drawn as a round marker with a number. Add with <span class="ui">+ Day</span>.</li>
+    </ul>
+    <h3>Editing an activity</h3>
+    <ul>
+      <li>Type the name directly in the field, choose a <strong>Ring</strong> and fill in the dates.</li>
+      <li>Changed your mind about the type? Switch between Period and Day in the <strong>Type</strong> field — the activity keeps its place.</li>
+      <li><strong>Own colour:</strong> click the colour square. Otherwise the activity uses its ring's colour. <span class="ui">↺</span> resets it.</li>
+      <li><strong>Order in the list:</strong> drag <span class="ui">⋮⋮</span>.</li>
+      <li><strong>Remove:</strong> click <span class="ui">✕</span>.</li>
+    </ul>
+    <p>When two periods in the same ring overlap, each gets its own track so neither hides the other.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="en-import">Import from Excel</h2>
+    <p>If you already have the activities in a spreadsheet, you don't have to type them in one by one.</p>
+    <ol>
+      <li>Click <span class="ui">Download the template</span> under the Activities heading. You get an Excel file with the columns <strong>Activity</strong>, <strong>Ring</strong>, <strong>Type</strong>, <strong>Start date</strong> and <strong>End date</strong>.</li>
+      <li>Fill in one row per activity. For a <em>Day</em>, the start date is enough.</li>
+      <li>Click <span class="ui">Import</span> and choose the file (xlsx or csv).</li>
+    </ol>
+    <p>The activities are added to the ones you already have — nothing is overwritten. Rings that don't exist yet are created automatically.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="en-look">How the wheel looks</h2>
+    <p>Under <span class="ui">Layout ▾</span> you choose how the wheel is drawn:</p>
+    <ul>
+      <li><strong>Classic</strong> — one ring per category, with the activities inside their rings.</li>
+      <li><strong>Agenda</strong> — every activity gets its own colour and is listed beside the wheel. Suits wheels with many activities.</li>
+      <li><strong>Labels on the side</strong> — moves activity names off the wheel into a numbered list next to it. Useful when names are long.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="en-wheels">Several wheels and a new year</h2>
+    <p>You can have as many wheels as you like, for example one per client or purpose. Under <span class="ui">Wheel: … ▾</span> you see all your wheels:</p>
+    <ul>
+      <li><strong>Switch wheel:</strong> click the wheel's name.</li>
+      <li><strong>New wheel:</strong> <span class="ui">+ New wheel</span> in the menu, or the <span class="ui">New wheel</span> button. The new wheel is empty; your other wheels stay as they are.</li>
+      <li><strong>Copy to a new year:</strong> click <span class="ui">⧉</span> and enter the year. All dates move to the new year, so you don't have to rebuild the wheel every year.</li>
+      <li><strong>Delete:</strong> click <span class="ui">✕</span>. This cannot be undone.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 id="en-download">Download and share</h2>
+    <p>Under <span class="ui">Download ▾</span>:</p>
+    <ul>
+      <li><strong>As image (PNG)</strong> — for email, the intranet or documents.</li>
+      <li><strong>As PDF</strong> — A4 landscape, ready to print.</li>
+      <li><strong>As PowerPoint</strong> — a 16:9 slide to drop into a presentation.</li>
+      <li><strong>As calendar (.ics)</strong> — every activity as a calendar event, for Outlook or Google Calendar.</li>
+    </ul>
+    <div class="note">
+      <strong>The image is also a save file.</strong> A PNG downloaded from the app carries the whole wheel with it.
+      With <span class="ui">Upload image</span> you open it again and carry on editing —
+      even from another account. That is how you hand a wheel to a colleague.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="en-saving">Saving and your account</h2>
+    <ul>
+      <li>Everything is saved automatically against your account, so you can reach your wheels from any computer.</li>
+      <li>Switch language with <span class="ui">SV</span> / <span class="ui">EN</span>.</li>
+      <li>Your account is behind the round button with your initials at the top right. That is where you sign out.</li>
+      <li>Data is kept for 24 months. Before the period ends, a reminder appears with a button to extend it. Read more under <a href="/integritet.html">About your data</a>.</li>
+    </ul>
+    <div class="note">
+      Activities are free text. Don't enter names of individuals unless you need to —
+      write <em>Performance review</em> rather than who the review is about.
+    </div>
+    <p>Can't find what you're looking for? Get in touch at <a href="mailto:klevas.ai@outlook.com">klevas.ai@outlook.com</a>.</p>
+  </div>
+
+  <footer>HR Årshjul — Klevås Consulting AB</footer>
+</div>
+
+<script>
+  // Foljer samma sprakval som appen (nyckeln hrArshjulLang i localStorage), sa
+  // att sidan oppnas pa det sprak anvandaren redan valt.
+  (function () {
+    var buttons = document.querySelectorAll('.lang button[data-lang]');
+
+    function read() {
+      try {
+        var saved = localStorage.getItem('hrArshjulLang');
+        if (saved === 'sv' || saved === 'en') return saved;
+      } catch (e) {}
+      try {
+        var langs = (navigator.languages && navigator.languages.length)
+          ? navigator.languages : [navigator.language];
+        for (var i = 0; i < langs.length; i++) {
+          if (!langs[i]) continue;
+          var base = String(langs[i]).toLowerCase().split('-')[0];
+          if (base === 'sv') return 'sv';
+          if (base === 'en') return 'en';
+        }
+        return 'en';
+      } catch (e) { return 'sv'; }
+    }
+
+    function apply(lang) {
+      document.getElementById('sv').hidden = lang !== 'sv';
+      document.getElementById('en').hidden = lang !== 'en';
+      document.documentElement.lang = lang;
+      document.title = lang === 'en'
+        ? 'HR Årshjul — Handbook'
+        : 'HR Årshjul — Handbok';
+      document.getElementById('backLink').textContent = lang === 'en'
+        ? '← Back to HR Årshjul'
+        : '← Tillbaka till HR Årshjul';
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.toggle('active', buttons[i].dataset.lang === lang);
+      }
+    }
+
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener('click', function () {
+        var lang = this.dataset.lang;
+        try { localStorage.setItem('hrArshjulLang', lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+
+    apply(read());
+  })();
+</script>
+</body>
+</html>

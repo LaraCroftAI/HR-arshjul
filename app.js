@@ -146,7 +146,7 @@ const I18N = {
     'panel.activities.hintBefore': 'Lägg in aktiviteten som en period (start- och slutdatum) eller som en enskild dag med ett bestämt datum. Vill du importera en lista? ',
     'panel.activities.hintLink': 'Hämta mallen',
     'panel.activities.hintAfter': '.',
-    'panel.activities.empty': 'Inga aktiviteter än. Klicka "+ Lägg till aktivitet".',
+    'panel.activities.empty': 'Inga aktiviteter än. Klicka "+ Period" eller "+ Dag".',
     'panel.activities.emptyNoRing': 'Lägg till en ring först — aktiviteter tillhör en ring.',
     'panel.activities.namePh': 'Aktivitetens namn',
     'panel.activities.ring': 'Ring',
@@ -250,6 +250,20 @@ const I18N = {
     'toast.duplicated': 'Kopia skapad för {year} — justera fritt',
     'toast.invalidYear': 'Ogiltigt årtal — ingen kopia skapades',
     'confirm.deleteWheel': 'Ta bort hjulet "{name}"? Det går inte att ångra.',
+    'help.toggleAria': 'Hjälp',
+    'help.welcome': 'Kom igång',
+    'help.handbook': 'Handbok',
+    'welcome.title': 'Välkommen till HR Årshjul',
+    'welcome.sub': 'Så här kommer du igång, i tre steg:',
+    'welcome.step1.title': 'Ge hjulet ett namn',
+    'welcome.step1.body': 'Skriv i fältet Namn på hjulet högst upp och välj år.',
+    'welcome.step2.title': 'Gör ringar och aktiviteter till dina egna',
+    'welcome.step2.body': 'Byt namn direkt i listan, ta bort med ✕ och lägg till med + Period eller + Dag. Allt sparas automatiskt.',
+    'welcome.step3.title': 'Ladda ner',
+    'welcome.step3.body': 'Under Ladda ner får du hjulet som bild, PDF, PowerPoint eller kalenderfil.',
+    'welcome.foot': 'Du hittar den här rutan och handboken igen under ?-knappen.',
+    'welcome.handbook': 'Läs handboken',
+    'welcome.start': 'Sätt igång',
   },
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -333,7 +347,7 @@ const I18N = {
     'panel.activities.hintBefore': 'Add the activity as a period (start and end date) or as a single day with a specific date. Want to import a list? ',
     'panel.activities.hintLink': 'Download the template',
     'panel.activities.hintAfter': '.',
-    'panel.activities.empty': 'No activities yet. Click "+ Add activity".',
+    'panel.activities.empty': 'No activities yet. Click "+ Period" or "+ Day".',
     'panel.activities.emptyNoRing': 'Add a ring first — activities belong to a ring.',
     'panel.activities.namePh': 'Activity name',
     'panel.activities.ring': 'Ring',
@@ -437,6 +451,20 @@ const I18N = {
     'toast.duplicated': 'Copy created for {year} — edit freely',
     'toast.invalidYear': 'Invalid year — no copy was created',
     'confirm.deleteWheel': 'Delete wheel "{name}"? This can\'t be undone.',
+    'help.toggleAria': 'Help',
+    'help.welcome': 'Getting started',
+    'help.handbook': 'Handbook',
+    'welcome.title': 'Welcome to HR Årshjul',
+    'welcome.sub': 'Here is how to get started, in three steps:',
+    'welcome.step1.title': 'Name the wheel',
+    'welcome.step1.body': 'Type in the Wheel name field at the top and pick the year.',
+    'welcome.step2.title': 'Make the rings and activities your own',
+    'welcome.step2.body': 'Rename them right in the list, remove with ✕ and add with + Period or + Day. Everything is saved automatically.',
+    'welcome.step3.title': 'Download',
+    'welcome.step3.body': 'Under Download you get the wheel as an image, PDF, PowerPoint or calendar file.',
+    'welcome.foot': 'You can find this box and the handbook again under the ? button.',
+    'welcome.handbook': 'Read the handbook',
+    'welcome.start': 'Get started',
   },
 };
 
@@ -800,6 +828,71 @@ function setAccountIdentity(user) {
   const logout = $('accountLogoutBtn');
   if (logout) logout.addEventListener('click', () => { setOpen(false); $('logoutBtn').click(); });
 })();
+
+// Hjälpmeny (?-knappen) — öppnar Kom igång-rutan igen eller går till handboken
+(function setupHelpDropdown() {
+  const btn = $('helpBtn');
+  const menu = $('helpMenu');
+  if (!btn || !menu) return;
+  const setOpen = open => {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    setOpen(menu.hidden);
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+  $('helpWelcomeBtn').addEventListener('click', () => { setOpen(false); openWelcome(); });
+})();
+
+// ---------- Välkomstruta ----------
+// Visas av sig själv en gång per konto och webbläsare. Markeras som sedd först
+// när rutan stängs, så den som laddar om innan dess får se den igen.
+let welcomeUserId = null;
+
+function welcomeSeenKey(userId) { return 'hrArshjulWelcomed:' + userId; }
+
+function maybeShowWelcome(user) {
+  if (!user || !user.id) return;
+  welcomeUserId = user.id;
+  try {
+    if (localStorage.getItem(welcomeSeenKey(user.id))) return;
+  } catch { return; } // utan localStorage kan vi inte minnas valet — visa hellre inget än varje gång
+  openWelcome();
+}
+
+function openWelcome() {
+  $('welcomeModal').hidden = false;
+  $('welcomeStartBtn').focus();
+}
+
+function markWelcomeSeen() {
+  if (!welcomeUserId) return;
+  try { localStorage.setItem(welcomeSeenKey(welcomeUserId), '1'); } catch {}
+}
+
+function closeWelcome() {
+  if ($('welcomeModal').hidden) return;
+  $('welcomeModal').hidden = true;
+  markWelcomeSeen();
+}
+
+$('welcomeStartBtn').addEventListener('click', closeWelcome);
+$('welcomeCloseBtn').addEventListener('click', closeWelcome);
+$('welcomeModal').addEventListener('click', e => {
+  if (e.target === $('welcomeModal')) closeWelcome();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeWelcome();
+});
+// Den som går vidare till handboken har också sett rutan
+$('welcomeHandbookLink').addEventListener('click', markWelcomeSeen);
 
 // Wheels dropdown — list/switch/create/delete wheels
 (function setupWheelsDropdown() {
@@ -3062,6 +3155,7 @@ function setupAuthHandlers() {
         });
         refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
         refreshRetention().catch(err => console.error('refreshRetention failed:', err));
+        maybeShowWelcome(user);
       } else {
         showAuthMessage(t('auth.sessionFailed'), true);
       }
@@ -3500,6 +3594,7 @@ function showAppScreen(user) {
   // Always re-check admin status when showing the app — never rely on the caller.
   refreshAdminStatus().catch(err => console.error('refreshAdminStatus failed:', err));
   refreshRetention().catch(err => console.error('refreshRetention failed:', err));
+  maybeShowWelcome(user);
 }
 function showLoginScreen() {
   $('authScreen').hidden = false;

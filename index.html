@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HR Årshjul</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
-  <link rel="stylesheet" href="fonts/fonts.css?v=72" />
+  <link rel="stylesheet" href="fonts/fonts.css?v=73" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=72" />
-  <script src="vendor/supabase.js?v=72" defer></script>
-  <script src="vendor/jspdf.umd.min.js?v=72" defer></script>
-  <script src="vendor/pptxgen.bundle.js?v=72" defer></script>
-  <script src="vendor/xlsx.full.min.js?v=72" defer></script>
+  <link rel="stylesheet" href="style.css?v=73" />
+  <script src="vendor/supabase.js?v=73" defer></script>
+  <script src="vendor/jspdf.umd.min.js?v=73" defer></script>
+  <script src="vendor/pptxgen.bundle.js?v=73" defer></script>
+  <script src="vendor/xlsx.full.min.js?v=73" defer></script>
 </head>
 <body>
   <!-- Login screen — shown when no user is signed in -->
@@ -71,6 +71,13 @@
       </div>
       <div class="user-block">
         <button id="adminBtn" class="btn btn-ghost btn-small" type="button" hidden style="display:none" data-i18n="topbar.adminLink">Hantera användare</button>
+        <div class="dropdown">
+          <button id="helpBtn" type="button" class="help-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria-label="help.toggleAria" aria-label="Hjälp">?</button>
+          <div id="helpMenu" class="dropdown-menu help-menu" hidden>
+            <button id="helpWelcomeBtn" type="button" class="dropdown-item" data-i18n="help.welcome">Kom igång</button>
+            <a href="/hjalp.html" class="dropdown-item" data-i18n="help.handbook">Handbok</a>
+          </div>
+        </div>
         <div class="dropdown">
           <button id="accountBtn" type="button" class="account-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria-label="account.toggleAria" aria-label="Konto">
             <span id="accountAvatar" class="account-avatar" aria-hidden="true"></span>
@@ -196,8 +203,38 @@
     </div>
   </div>
 
+  <!-- Välkomstruta — visas första gången man loggar in, kan öppnas igen via ?-knappen -->
+  <div id="welcomeModal" class="modal-backdrop" hidden>
+    <div class="modal-card welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+      <div class="modal-head">
+        <h2 id="welcomeTitle" data-i18n="welcome.title">Välkommen till HR Årshjul</h2>
+        <button id="welcomeCloseBtn" class="btn-icon" type="button" data-i18n-aria-label="admin.closeAria" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-sub" data-i18n="welcome.sub">Så här kommer du igång, i tre steg:</p>
+      <ol class="welcome-steps">
+        <li>
+          <strong data-i18n="welcome.step1.title">Ge hjulet ett namn</strong>
+          <span data-i18n="welcome.step1.body">Skriv i fältet Namn på hjulet högst upp och välj år.</span>
+        </li>
+        <li>
+          <strong data-i18n="welcome.step2.title">Gör ringar och aktiviteter till dina egna</strong>
+          <span data-i18n="welcome.step2.body">Byt namn direkt i listan, ta bort med ✕ och lägg till med + Period eller + Dag. Allt sparas automatiskt.</span>
+        </li>
+        <li>
+          <strong data-i18n="welcome.step3.title">Ladda ner</strong>
+          <span data-i18n="welcome.step3.body">Under Ladda ner får du hjulet som bild, PDF, PowerPoint eller kalenderfil.</span>
+        </li>
+      </ol>
+      <p class="welcome-foot" data-i18n="welcome.foot">Du hittar den här rutan och handboken igen under ?-knappen.</p>
+      <div class="welcome-actions">
+        <a href="/hjalp.html" id="welcomeHandbookLink" class="btn btn-ghost" data-i18n="welcome.handbook">Läs handboken</a>
+        <button id="welcomeStartBtn" class="btn btn-primary" type="button" data-i18n="welcome.start">Sätt igång</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=72" defer></script>
+  <script src="app.js?v=73" defer></script>
 </body>
 </html>

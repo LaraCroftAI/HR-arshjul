@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/(index.html|admin.html|integritet.html|app.js|style.css)",
+      "source": "/(index.html|admin.html|integritet.html|hjalp.html|app.js|style.css)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]

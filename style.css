@@ -914,6 +914,63 @@ h1, h2, h3 {
 }
 .account-menu a.dropdown-item { text-decoration: none; }
 
+/* ---------- Hjälp: ?-knappen och välkomstrutan ---------- */
+.help-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.help-btn:hover,
+.help-btn[aria-expanded="true"] { background: var(--surface-soft); color: var(--ink); border-color: var(--ink-faint); }
+.help-menu { min-width: 180px; }
+.help-menu a.dropdown-item { text-decoration: none; }
+
+.welcome-card { max-width: 480px; }
+.welcome-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0 0 18px;
+  padding: 0;
+}
+.welcome-steps li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 40px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.welcome-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.welcome-steps li span { color: var(--ink-soft); }
+.welcome-foot { margin: 0 0 18px; font-size: 13px; color: var(--ink-faint); }
+.welcome-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.welcome-actions a.btn { text-decoration: none; }
+
 /* ---------- Gallringsbanner ---------- */
 .retention-banner {
   background: #FBF0D9;
