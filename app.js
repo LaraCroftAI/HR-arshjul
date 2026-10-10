@@ -265,10 +265,19 @@ const I18N = {
     'wheels.new': '+ Nytt hjul',
     'wheels.untitled': 'Namnlöst hjul',
     'wheels.deleteTitle': 'Ta bort detta hjul',
-    'wheels.duplicateTitle': 'Kopiera till valfritt år',
-    'prompt.copyYear': 'Vilket år ska kopian gälla?',
-    'toast.duplicated': 'Kopia skapad för {year} — justera fritt',
-    'toast.invalidYear': 'Ogiltigt årtal — ingen kopia skapades',
+    'wheels.duplicateTitle': 'Kopiera hjulet',
+    'wheels.copyAction': '⧉ Kopiera det här hjulet…',
+    'copy.title': 'Kopiera hjul',
+    'copy.sub': 'Kopian blir ett eget hjul med samma ringar och aktiviteter. Originalet ändras inte.',
+    'copy.source': 'Kopierar',
+    'copy.name': 'Namn på kopian',
+    'copy.year': 'År',
+    'copy.yearHint': 'Alla datum flyttas till det år du väljer. Behåll samma år om kopian ska användas till en annan kund.',
+    'copy.cancel': 'Avbryt',
+    'copy.submit': 'Skapa kopia',
+    'copy.suffix': '(kopia)',
+    'copy.invalidYear': 'Skriv ett årtal mellan 1900 och 2999.',
+    'toast.duplicated': 'Kopian är skapad och öppnad: {name}',
     'confirm.deleteWheel': 'Ta bort hjulet "{name}"? Det går inte att ångra.',
     'help.toggleAria': 'Hjälp',
     'help.welcome': 'Kom igång',
@@ -475,10 +484,19 @@ const I18N = {
     'wheels.new': '+ New wheel',
     'wheels.untitled': 'Untitled wheel',
     'wheels.deleteTitle': 'Delete this wheel',
-    'wheels.duplicateTitle': 'Copy to any year',
-    'prompt.copyYear': 'Which year is the copy for?',
-    'toast.duplicated': 'Copy created for {year} — edit freely',
-    'toast.invalidYear': 'Invalid year — no copy was created',
+    'wheels.duplicateTitle': 'Copy this wheel',
+    'wheels.copyAction': '⧉ Copy this wheel…',
+    'copy.title': 'Copy wheel',
+    'copy.sub': 'The copy becomes a wheel of its own with the same rings and activities. The original is not changed.',
+    'copy.source': 'Copying',
+    'copy.name': 'Name of the copy',
+    'copy.year': 'Year',
+    'copy.yearHint': 'All dates move to the year you choose. Keep the same year if the copy is for another client.',
+    'copy.cancel': 'Cancel',
+    'copy.submit': 'Create copy',
+    'copy.suffix': '(copy)',
+    'copy.invalidYear': 'Enter a year between 1900 and 2999.',
+    'toast.duplicated': 'Copy created and opened: {name}',
     'confirm.deleteWheel': 'Delete wheel "{name}"? This can\'t be undone.',
     'help.toggleAria': 'Help',
     'help.welcome': 'Getting started',
@@ -2270,11 +2288,14 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function toast(msg) {
+let toastTimer = null;
+function toast(msg, ms = 1800) {
   const t = $('toast');
   t.textContent = msg;
   t.hidden = false;
-  setTimeout(() => { t.hidden = true; }, 1800);
+  // Nytt meddelande ska inte gömmas av ett äldre meddelandes timer
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
 // ---------- Import activities from XLSX/CSV ----------
@@ -4096,19 +4117,80 @@ function createNewWheel() {
 // Copy an existing wheel into a brand-new one for the next year. Rings and
 // activities are deep-cloned; activity→ring links live inside the same data
 // blob (ringId references), so they stay valid without remapping ids.
+// ---------- Kopiera hjul ----------
+// Dialogrutan föreslår nästa år och ett namn. Står källans årtal i namnet
+// ("Acme 2026") byts det mot det nya året; samma år ger "(kopia)" i stället,
+// så att två hjul aldrig heter likadant. Förslaget följer årsfältet tills
+// användaren själv skriver i namnfältet.
+let copySourceId = null;
+let copyNameTouched = false;
+
+function suggestCopyName(srcName, baseYear, year) {
+  const name = (srcName || '').trim();
+  const base = String(baseYear);
+  if (name && year !== baseYear && name.includes(base)) return name.split(base).join(String(year));
+  if (year === baseYear) return (name || t('wheels.untitled')) + ' ' + t('copy.suffix');
+  return name;
+}
+
 function duplicateWheel(sourceId) {
   const src = wheels.find(w => w.id === sourceId);
   if (!src || !src.data) return;
-  ensureActivityDates(src.data); // ensure the source is date-based before cloning
-  // Ask which year the copy is for, pre-filling next year so Enter = +1.
+  copySourceId = sourceId;
+  copyNameTouched = false;
   const baseYear = parseInt(src.data.year, 10) || new Date().getFullYear();
-  const answer = prompt(t('prompt.copyYear'), String(baseYear + 1));
-  if (answer === null) return; // user cancelled — no copy created
-  const year = parseInt(answer, 10);
+  $('copySourceName').textContent = wheelDisplayName(src);
+  $('copyYear').value = String(baseYear + 1);
+  $('copyName').value = suggestCopyName(src.data.client, baseYear, baseYear + 1);
+  $('copyName').placeholder = t('topbar.wheelNamePh');
+  $('copyError').hidden = true;
+  $('copyModal').hidden = false;
+  $('copyYear').focus();
+  $('copyYear').select();
+}
+
+function closeCopyModal() {
+  $('copyModal').hidden = true;
+  copySourceId = null;
+}
+
+$('copyName').addEventListener('input', () => { copyNameTouched = true; });
+$('copyYear').addEventListener('input', () => {
+  $('copyError').hidden = true;
+  const src = wheels.find(w => w.id === copySourceId);
+  const year = parseInt($('copyYear').value, 10);
+  if (!src || copyNameTouched || !year) return;
+  const baseYear = parseInt(src.data.year, 10) || new Date().getFullYear();
+  $('copyName').value = suggestCopyName(src.data.client, baseYear, year);
+});
+$('copyForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const year = parseInt($('copyYear').value, 10);
   if (!year || year < 1900 || year > 2999) {
-    toast(t('toast.invalidYear'));
+    $('copyError').textContent = t('copy.invalidYear');
+    $('copyError').hidden = false;
+    $('copyYear').focus();
     return;
   }
+  const sourceId = copySourceId;
+  const name = $('copyName').value.trim();
+  closeCopyModal();
+  createWheelCopy(sourceId, name, year);
+});
+$('copyCancelBtn').addEventListener('click', closeCopyModal);
+$('copyCloseBtn').addEventListener('click', closeCopyModal);
+$('copyModal').addEventListener('click', e => {
+  if (e.target === $('copyModal')) closeCopyModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('copyModal').hidden) closeCopyModal();
+});
+
+function createWheelCopy(sourceId, name, year) {
+  const src = wheels.find(w => w.id === sourceId);
+  if (!src || !src.data) return;
+  ensureActivityDates(src.data); // ensure the source is date-based before cloning
+  const baseYear = parseInt(src.data.year, 10) || new Date().getFullYear();
   let data;
   try {
     data = JSON.parse(JSON.stringify(src.data)); // plain-JSON deep clone
@@ -4116,6 +4198,7 @@ function duplicateWheel(sourceId) {
     return;
   }
   data.year = year;
+  data.client = name;
   // Move every dated activity into the target year so a copy of 2026 lands
   // on the same days in 2027 (milestones shift too — they didn't before).
   const delta = year - baseYear;
@@ -4130,7 +4213,8 @@ function duplicateWheel(sourceId) {
   wheels.push({ id, data });
   switchToWheel(id);
   saveState(); // persist the copy to Supabase
-  toast(t('toast.duplicated', { year: data.year }));
+  // Längre visningstid än vanligt — det viktiga är att man nu står i kopian
+  toast(t('toast.duplicated', { name: wheelDisplayName({ data }) }), 4500);
 }
 
 async function deleteWheel(id) {
@@ -4183,7 +4267,8 @@ async function deleteWheel(id) {
 function wheelDisplayName(w) {
   const c = (w.data && w.data.client || '').trim();
   const y = w.data && w.data.year;
-  if (c && y) return `${c} · ${y}`;
+  // "Acme 2027" behöver inte bli "Acme 2027 · 2027"
+  if (c && y) return c.includes(String(y)) ? c : `${c} · ${y}`;
   if (c) return c;
   if (y) return `${t('wheels.untitled')} · ${y}`;
   return t('wheels.untitled');
@@ -4240,9 +4325,19 @@ function refreshWheelsList() {
     }
     menu.appendChild(row);
   });
+  // Synlig, textad väg till kopiering — symbolen på raderna räckte inte
+  const copyCurrent = document.createElement('button');
+  copyCurrent.type = 'button';
+  copyCurrent.className = 'dropdown-item dropdown-item-action';
+  copyCurrent.textContent = t('wheels.copyAction');
+  copyCurrent.addEventListener('click', () => {
+    $('wheelsMenu').hidden = true;
+    duplicateWheel(currentWheelId);
+  });
+  menu.appendChild(copyCurrent);
   const newBtn = document.createElement('button');
   newBtn.type = 'button';
-  newBtn.className = 'dropdown-item dropdown-item-action';
+  newBtn.className = 'dropdown-item';
   newBtn.textContent = t('wheels.new');
   newBtn.addEventListener('click', () => {
     $('wheelsMenu').hidden = true;

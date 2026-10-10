@@ -792,10 +792,40 @@ h1, h2, h3 {
   color: var(--ink-faint);
   padding: 8px 10px;
   font-size: 13px;
-  visibility: hidden;
 }
-.wheel-row:hover .wheel-copy { visibility: visible; }
 .wheel-row .wheel-copy:hover { color: var(--ink); }
+/* Pekskärmar har ingen hover — visa ta bort-krysset direkt där */
+@media (hover: none) {
+  .wheel-row .wheel-delete { visibility: visible; }
+}
+
+#wheelsMenu { min-width: 280px; left: 0; right: auto; }
+
+/* ---------- Kopiera hjul ---------- */
+.copy-card { max-width: 440px; }
+.copy-form { display: flex; flex-direction: column; gap: 12px; }
+.copy-source { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.copy-source strong { color: var(--ink); font-weight: 600; }
+.copy-field { display: flex; flex-direction: column; gap: 4px; }
+.copy-field span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.copy-field input {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  min-width: 0;
+}
+.copy-field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.copy-field-year input { max-width: 120px; }
+.copy-hint { margin: -4px 0 0; font-size: 13px; color: var(--ink-soft); }
+.copy-error { margin: 0; font-size: 13px; color: var(--danger); }
+.copy-form .welcome-actions { margin-top: 6px; }
 .wheels-current {
   font-weight: 500;
   max-width: 200px;

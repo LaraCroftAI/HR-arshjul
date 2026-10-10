@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HR Årshjul</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
-  <link rel="stylesheet" href="fonts/fonts.css?v=76" />
+  <link rel="stylesheet" href="fonts/fonts.css?v=77" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=76" />
-  <script src="vendor/supabase.js?v=76" defer></script>
-  <script src="vendor/jspdf.umd.min.js?v=76" defer></script>
-  <script src="vendor/pptxgen.bundle.js?v=76" defer></script>
-  <script src="vendor/xlsx.full.min.js?v=76" defer></script>
+  <link rel="stylesheet" href="style.css?v=77" />
+  <script src="vendor/supabase.js?v=77" defer></script>
+  <script src="vendor/jspdf.umd.min.js?v=77" defer></script>
+  <script src="vendor/pptxgen.bundle.js?v=77" defer></script>
+  <script src="vendor/xlsx.full.min.js?v=77" defer></script>
 </head>
 <body>
   <!-- Login screen — shown when no user is signed in -->
@@ -233,8 +233,36 @@
     </div>
   </div>
 
+  <!-- Kopiera hjul — ersätter den gamla prompt()-frågan om årtal -->
+  <div id="copyModal" class="modal-backdrop" hidden>
+    <div class="modal-card copy-card" role="dialog" aria-modal="true" aria-labelledby="copyTitle">
+      <div class="modal-head">
+        <h2 id="copyTitle" data-i18n="copy.title">Kopiera hjul</h2>
+        <button id="copyCloseBtn" class="btn-icon" type="button" data-i18n-aria-label="admin.closeAria" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-sub" data-i18n="copy.sub">Kopian blir ett eget hjul med samma ringar och aktiviteter. Originalet ändras inte.</p>
+      <form id="copyForm" class="copy-form" autocomplete="off" novalidate>
+        <p class="copy-source"><span data-i18n="copy.source">Kopierar</span> <strong id="copySourceName"></strong></p>
+        <label class="copy-field">
+          <span data-i18n="copy.name">Namn på kopian</span>
+          <input id="copyName" type="text" />
+        </label>
+        <label class="copy-field copy-field-year">
+          <span data-i18n="copy.year">År</span>
+          <input id="copyYear" type="number" min="1900" max="2999" required />
+        </label>
+        <p class="copy-hint" data-i18n="copy.yearHint">Alla datum flyttas till det år du väljer. Behåll samma år om kopian ska användas till en annan kund.</p>
+        <p id="copyError" class="copy-error" hidden></p>
+        <div class="welcome-actions">
+          <button id="copyCancelBtn" class="btn btn-ghost" type="button" data-i18n="copy.cancel">Avbryt</button>
+          <button class="btn btn-primary" type="submit" data-i18n="copy.submit">Skapa kopia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=76" defer></script>
+  <script src="app.js?v=77" defer></script>
 </body>
 </html>
