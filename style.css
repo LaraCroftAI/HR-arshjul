@@ -1160,6 +1160,8 @@ body.retention-locked #uploadBtn {
   /* Kontochippet följer med ner på mobil — det är enda stället där man ser
      vilket konto som är inloggat. Bara den gamla modal-knappen göms. */
   .user-block #adminBtn { display: none; }
+  /* Logga ut finns i kontomenyn — den röda knappen trängde ihop toppraden på mobil */
+  .user-block #logoutBtn { display: none; }
   .account-menu { min-width: 220px; }
   .overflow-btn { display: inline-block; grid-area: menu; }
   .topbar-actions,

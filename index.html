@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HR Årshjul</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
-  <link rel="stylesheet" href="fonts/fonts.css?v=77" />
+  <link rel="stylesheet" href="fonts/fonts.css?v=78" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=77" />
-  <script src="vendor/supabase.js?v=77" defer></script>
-  <script src="vendor/jspdf.umd.min.js?v=77" defer></script>
-  <script src="vendor/pptxgen.bundle.js?v=77" defer></script>
-  <script src="vendor/xlsx.full.min.js?v=77" defer></script>
+  <link rel="stylesheet" href="style.css?v=78" />
+  <script src="vendor/supabase.js?v=78" defer></script>
+  <script src="vendor/jspdf.umd.min.js?v=78" defer></script>
+  <script src="vendor/pptxgen.bundle.js?v=78" defer></script>
+  <script src="vendor/xlsx.full.min.js?v=78" defer></script>
 </head>
 <body>
   <!-- Login screen — shown when no user is signed in -->
@@ -104,6 +104,7 @@
           <div id="wheelsMenu" class="dropdown-menu" hidden></div>
         </div>
         <button id="newBtn" class="btn btn-ghost btn-small" data-i18n="topbar.newWheel">Nytt hjul</button>
+        <button id="copyBtn" class="btn btn-ghost btn-small" type="button" data-i18n="topbar.copyWheel">Kopiera hjul</button>
         <button id="uploadBtn" class="btn btn-ghost btn-small" data-i18n="topbar.uploadImage">Ladda upp bild</button>
         <div class="dropdown">
           <button id="exportBtn" class="btn btn-primary btn-small" data-i18n="topbar.export">Ladda ner ▾</button>
@@ -263,6 +264,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=77" defer></script>
+  <script src="app.js?v=78" defer></script>
 </body>
 </html>

@@ -129,6 +129,7 @@ const I18N = {
     'topbar.year': 'År',
     'topbar.wheelNamePh': 't.ex. HR Activity Wheel',
     'topbar.newWheel': 'Nytt hjul',
+    'topbar.copyWheel': 'Kopiera hjul',
     'topbar.uploadImage': 'Ladda upp bild',
     'topbar.export': 'Ladda ner ▾',
     'topbar.exportPng': 'Som bild (PNG)',
@@ -348,6 +349,7 @@ const I18N = {
     'topbar.year': 'Year',
     'topbar.wheelNamePh': 'e.g. HR Activity Wheel',
     'topbar.newWheel': 'New wheel',
+    'topbar.copyWheel': 'Copy wheel',
     'topbar.uploadImage': 'Upload image',
     'topbar.export': 'Download ▾',
     'topbar.exportPng': 'As image (PNG)',
@@ -802,6 +804,8 @@ $('downloadTemplateLink').addEventListener('click', e => {
 });
 setupRingDragAndDrop();
 setupActivityDragAndDrop();
+// Kopiera det öppna hjulet — syns alltid, till skillnad från raderna i Hjul-menyn
+$('copyBtn').addEventListener('click', () => duplicateWheel(currentWheelId));
 $('newBtn').addEventListener('click', () => {
   createNewWheel();
 });
