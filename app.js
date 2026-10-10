@@ -82,6 +82,17 @@ function wantsSideLegend() {
   return getLayout() === 'agenda' || getLabelPosition() === 'side';
 }
 
+// 'Visa datum' i Layout-menyn: exakta datum även för perioder i förklaringen
+function wantsDates() {
+  return !!(state && state.showDates);
+}
+
+// Förklaringen blir en lista över aktiviteterna (i stället för bara ringar
+// och dagar) i sidoläget, och i klassiskt läge när datum ska visas.
+function wantsListLegend() {
+  return wantsSideLegend() || wantsDates();
+}
+
 // ---------- i18n ----------
 const I18N = {
   sv: {
@@ -261,6 +272,7 @@ const I18N = {
     'layout.wheel': 'Klassisk',
     'layout.agenda': 'Agenda',
     'layout.labelSide': 'Text vid sidan',
+    'layout.showDates': 'Visa datum',
     'wheels.label': 'Hjul',
     'wheels.toggleAria': 'Mina hjul',
     'wheels.new': '+ Nytt hjul',
@@ -481,6 +493,7 @@ const I18N = {
     'layout.wheel': 'Classic',
     'layout.agenda': 'Agenda',
     'layout.labelSide': 'Labels on the side',
+    'layout.showDates': 'Show dates',
     'wheels.label': 'Wheel',
     'wheels.toggleAria': 'My wheels',
     'wheels.new': '+ New wheel',
@@ -1015,6 +1028,13 @@ async function refreshWheelsFromRemote() {
       toggleLabelPosition();
     });
   }
+  const datesToggle = $('showDatesToggle');
+  if (datesToggle) {
+    datesToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      toggleShowDates();
+    });
+  }
 })();
 function refreshLayoutToggle() {
   const cur = getLayout();
@@ -1023,6 +1043,8 @@ function refreshLayoutToggle() {
   });
   const sideToggle = $('labelSideToggle');
   if (sideToggle) sideToggle.classList.toggle('is-checked', getLabelPosition() === 'side');
+  const datesToggle = $('showDatesToggle');
+  if (datesToggle) datesToggle.classList.toggle('is-checked', wantsDates());
 }
 function setLayout(layout) {
   if (layout !== 'wheel' && layout !== 'agenda') return;
@@ -1030,6 +1052,12 @@ function setLayout(layout) {
   saveState();
   refreshLayoutToggle();
   renderWheel();
+  renderLegend();
+}
+function toggleShowDates() {
+  state.showDates = !wantsDates();
+  saveState();
+  refreshLayoutToggle();
   renderLegend();
 }
 function toggleLabelPosition() {
@@ -1561,29 +1589,23 @@ function renderActivitySelects() {
 
 function renderLegend() {
   legend.innerHTML = '';
-  if (wantsSideLegend()) {
+  if (wantsListLegend()) {
     legend.classList.add('legend-agenda');
-    let n = 0;
-    const ordered = orderedAgendaActivities();
     let currentRingId = '__nothing__';
-    ordered.forEach(entry => {
-      const ringId = entry.ring ? entry.ring.id : '__orphan__';
-      if (ringId !== currentRingId) {
-        currentRingId = ringId;
+    listLegendRows().forEach(row => {
+      if (row.ringId !== currentRingId) {
+        currentRingId = row.ringId;
         const heading = document.createElement('div');
         heading.className = 'legend-heading';
-        heading.textContent = entry.ring ? entry.ring.name : '—';
+        heading.textContent = row.ringName;
         legend.appendChild(heading);
       }
-      n++;
       const item = document.createElement('span');
       item.className = 'legend-item';
-      const ringColor = entry.ring ? entry.ring.color : '#888';
-      const color = effectiveActivityColor(entry.act, ringColor, n - 1);
-      const ms = isMilestone(entry.act);
-      const swatch = `<span class="legend-swatch${ms ? ' legend-swatch-milestone' : ''}" style="background:${color}"></span>`;
-      const when = ` <span class="legend-when">· ${escapeHtml(legendWhenLabel(entry.act))}</span>`;
-      item.innerHTML = `${swatch}<span class="legend-num">${n}.</span> ${escapeHtml(entry.act.name)}${when}`;
+      const swatch = `<span class="legend-swatch${row.milestone ? ' legend-swatch-milestone' : ''}" style="background:${row.color}"></span>`;
+      const num = row.num ? `<span class="legend-num">${row.num}.</span> ` : '';
+      const when = ` <span class="legend-when">· ${escapeHtml(row.when)}</span>`;
+      item.innerHTML = `${swatch}${num}${escapeHtml(row.entry.act.name)}${when}`;
       legend.appendChild(item);
     });
   } else {
@@ -2175,7 +2197,30 @@ function spanMonthLabel(act) {
 // The "when" suffix after an activity's name in the side legend:
 // a fixed date for single-day milestones, the covered month(s) for periods.
 function legendWhenLabel(act) {
-  return isMilestone(act) ? formatMilestoneDate(act.date) : spanMonthLabel(act);
+  if (isMilestone(act)) return formatMilestoneDate(act.date);
+  return wantsDates() ? spanDateRangeLabel(act) : spanMonthLabel(act);
+}
+
+// Raderna i listförklaringen — samma underlag för skärm, PNG, PDF och PowerPoint.
+// Numret är det som står på hjulet: i sidoläget har varje aktivitet ett nummer,
+// i klassiskt läge bara dagarna (perioderna bär sina namn i bågen).
+function listLegendRows() {
+  const side = wantsSideLegend();
+  const msNum = side ? null : milestoneNumberById();
+  return orderedAgendaActivities().map((entry, i) => {
+    const num = side ? i + 1 : msNum.get(entry.act.id);
+    const ringColor = entry.ring ? entry.ring.color : '#888888';
+    return {
+      entry,
+      num,
+      when: legendWhenLabel(entry.act),
+      color: effectiveActivityColor(entry.act, ringColor, i),
+      milestone: isMilestone(entry.act),
+      ringId: entry.ring ? entry.ring.id : '__orphan__',
+      ringName: entry.ring ? entry.ring.name : '—',
+      text: (num ? num + '. ' : '') + entry.act.name + ' · ' + legendWhenLabel(entry.act),
+    };
+  });
 }
 
 // Convert legacy week+length spans into start/end dates, in place. Idempotent:
@@ -2741,7 +2786,8 @@ function setupExportDropdown() {
 }
 
 // Build the wheel as a PNG blob with embedded project state.
-async function buildWheelPngBlob() {
+// Ritar hjulet (bara hjulet) på en canvas, 2400×2400 px.
+function renderWheelCanvas() {
   return new Promise((resolve, reject) => {
     const svgClone = wheel.cloneNode(true);
     svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -2779,17 +2825,7 @@ async function buildWheelPngBlob() {
       ctx.fillRect(0, 0, size, size);
       ctx.drawImage(img, 0, 0, size, size);
       URL.revokeObjectURL(url);
-
-      canvas.toBlob(async (pngBlob) => {
-        if (!pngBlob) { reject(new Error('canvas.toBlob returned null')); return; }
-        try {
-          const arrayBuf = await pngBlob.arrayBuffer();
-          const stateJson = JSON.stringify(state);
-          const stateB64 = btoa(unescape(encodeURIComponent(stateJson)));
-          const pngBytes = injectTextChunk(new Uint8Array(arrayBuf), PNG_KEYWORD, stateB64);
-          resolve(new Blob([pngBytes], { type: 'image/png' }));
-        } catch (e) { reject(e); }
-      }, 'image/png');
+      resolve(canvas);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -2799,9 +2835,160 @@ async function buildWheelPngBlob() {
   });
 }
 
+// PNG med hjulets data i en tEXt-chunk, så att bilden kan laddas upp igen.
+function canvasToPngWithState(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(async (pngBlob) => {
+      if (!pngBlob) { reject(new Error('canvas.toBlob returned null')); return; }
+      try {
+        const arrayBuf = await pngBlob.arrayBuffer();
+        const stateJson = JSON.stringify(state);
+        const stateB64 = btoa(unescape(encodeURIComponent(stateJson)));
+        const pngBytes = injectTextChunk(new Uint8Array(arrayBuf), PNG_KEYWORD, stateB64);
+        resolve(new Blob([pngBytes], { type: 'image/png' }));
+      } catch (e) { reject(e); }
+    }, 'image/png');
+  });
+}
+
+// Bara hjulet — används som bild i PDF och PowerPoint, som har egna förklaringar.
+async function buildWheelPngBlob() {
+  return canvasToPngWithState(await renderWheelCanvas());
+}
+
+// Den nedladdade PNG:en: hjulet plus samma förklaring som PDF:en, så att
+// nummer och datum går att läsa även i bilden. Listförklaringen hamnar till
+// vänster om hjulet, ringförklaringen under.
+async function buildExportPngBlob() {
+  const wheelCanvas = await renderWheelCanvas();
+  try { await document.fonts.ready; } catch {}
+  const composed = wantsListLegend()
+    ? composeListLegend(wheelCanvas, listLegendRows())
+    : composeRingLegend(wheelCanvas, exportLegendItems());
+  return canvasToPngWithState(composed);
+}
+
+const PNG_LEGEND = {
+  pad: 120,
+  itemFs: 50,
+  headingFs: 42,
+  lineH: 82,
+  headingGap: 40,
+  swatch: 40,
+  font: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+};
+
+function fitText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let out = text;
+  while (out.length > 1 && ctx.measureText(out + '…').width > maxW) out = out.slice(0, -1);
+  return out + '…';
+}
+
+function drawLegendSwatch(ctx, x, yMid, color, milestone) {
+  const sw = PNG_LEGEND.swatch;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (milestone) ctx.arc(x + sw / 2, yMid, sw / 2, 0, Math.PI * 2);
+  else if (ctx.roundRect) ctx.roundRect(x, yMid - sw / 2, sw, sw, 8);
+  else ctx.rect(x, yMid - sw / 2, sw, sw);
+  ctx.fill();
+}
+
+function composeListLegend(wheelCanvas, rows) {
+  if (!rows.length) return wheelCanvas;
+  const L = PNG_LEGEND;
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `500 ${L.itemFs}px ${L.font}`;
+  const textX = L.swatch + 24;
+  const widest = Math.max(...rows.map(r => measure.measureText(r.text).width));
+  const colW = Math.min(1800, Math.max(900, textX + widest));
+  // En rad per aktivitet plus en rubrik per ring
+  const ringCount = new Set(rows.map(r => r.ringId)).size;
+  const listH = rows.length * L.lineH + ringCount * L.lineH + (ringCount - 1) * L.headingGap;
+  const size = wheelCanvas.width;
+  const canvas = document.createElement('canvas');
+  canvas.width = L.pad + colW + L.pad + size;
+  canvas.height = Math.max(size, listH + 2 * L.pad);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(wheelCanvas, L.pad + colW + L.pad, Math.round((canvas.height - size) / 2));
+
+  ctx.textBaseline = 'middle';
+  let y = Math.round((canvas.height - listH) / 2) + L.lineH / 2;
+  let currentRingId = null;
+  rows.forEach((row, i) => {
+    if (row.ringId !== currentRingId) {
+      currentRingId = row.ringId;
+      if (i > 0) y += L.headingGap;
+      ctx.font = `700 ${L.headingFs}px ${L.font}`;
+      ctx.fillStyle = '#1A2332';
+      ctx.fillText(fitText(ctx, row.ringName.toUpperCase(), colW), L.pad, y);
+      y += L.lineH;
+    }
+    drawLegendSwatch(ctx, L.pad, y, row.color, row.milestone);
+    ctx.font = `500 ${L.itemFs}px ${L.font}`;
+    const head = (row.num ? row.num + '. ' : '') + row.entry.act.name;
+    const tail = ' · ' + row.when;
+    const maxW = colW - textX;
+    // Kapa hellre namnet än datumet — det är datumet bilden ska visa
+    const headFit = fitText(ctx, head, Math.max(maxW * 0.4, maxW - ctx.measureText(tail).width));
+    const headW = ctx.measureText(headFit).width;
+    ctx.fillStyle = '#3C465A';
+    ctx.fillText(headFit, L.pad + textX, y);
+    ctx.fillStyle = '#8C95A6';
+    ctx.fillText(fitText(ctx, tail, maxW - headW), L.pad + textX + headW, y);
+    y += L.lineH;
+  });
+  return canvas;
+}
+
+function composeRingLegend(wheelCanvas, items) {
+  if (!items.length) return wheelCanvas;
+  const L = PNG_LEGEND;
+  const size = wheelCanvas.width;
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `500 ${L.itemFs}px ${L.font}`;
+  const gapItem = 70;
+  const textX = L.swatch + 20;
+  const maxRowW = size - 2 * L.pad;
+  // Radbryt som i PDF:en och centrera varje rad
+  const lines = [[]];
+  let lineW = 0;
+  items.forEach(item => {
+    const w = textX + Math.min(maxRowW - textX, measure.measureText(item.label).width);
+    if (lines[lines.length - 1].length && lineW + gapItem + w > maxRowW) { lines.push([]); lineW = 0; }
+    const line = lines[lines.length - 1];
+    lineW += (line.length ? gapItem : 0) + w;
+    line.push({ item, w });
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size + lines.length * L.lineH + L.pad / 2;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(wheelCanvas, 0, 0);
+  ctx.textBaseline = 'middle';
+  ctx.font = `500 ${L.itemFs}px ${L.font}`;
+  lines.forEach((line, li) => {
+    const total = line.reduce((sum, p, i) => sum + p.w + (i ? gapItem : 0), 0);
+    let x = (size - total) / 2;
+    const y = size + L.lineH / 2 + li * L.lineH - L.pad / 4;
+    line.forEach(p => {
+      drawLegendSwatch(ctx, x, y, p.item.color, p.item.milestone);
+      ctx.fillStyle = '#3C465A';
+      ctx.fillText(fitText(ctx, p.item.label, p.w - textX), x + textX, y);
+      x += p.w + gapItem;
+    });
+  });
+  return canvas;
+}
+
 async function exportWheelPNG() {
   try {
-    const blob = await buildWheelPngBlob();
+    const blob = await buildExportPngBlob();
     downloadBlob(blob, `${exportFilenameStem()}-${safeWheelName()}-${state.year}.png`);
     toast(t('toast.imageDownloaded'));
   } catch (e) {
@@ -2828,7 +3015,7 @@ async function exportWheelPDF() {
     const title = (state.client || t('wheel.centerFallback')).trim();
     doc.text(`${title}  ·  ${state.year}`, pageW / 2, 13, { align: 'center' });
 
-    if (wantsSideLegend()) {
+    if (wantsListLegend()) {
       // Wheel on the right, legend on the left
       const imgSize = 175;
       const wheelX = pageW - imgSize - 6;
@@ -2869,7 +3056,7 @@ function exportLegendItems() {
 }
 
 function drawPdfLegend(doc, pageW, pageH) {
-  if (wantsSideLegend()) {
+  if (wantsListLegend()) {
     drawPdfLegendAgenda(doc, pageW, pageH);
     return;
   }
@@ -2905,8 +3092,8 @@ function drawPdfLegend(doc, pageW, pageH) {
 }
 
 function drawPdfLegendAgenda(doc, pageW, pageH) {
-  const ordered = orderedAgendaActivities();
-  if (!ordered.length) return;
+  const rows = listLegendRows();
+  if (!rows.length) return;
   const xLeft = 8;
   const colWidth = 110; // leaves room for 175mm wheel on the right
   const swatch = 2.6;
@@ -2917,31 +3104,28 @@ function drawPdfLegendAgenda(doc, pageW, pageH) {
   let y = 22;
 
   let currentRingId = null;
-  ordered.forEach((entry, i) => {
-    const ringId = entry.ring ? entry.ring.id : '__orphan__';
-    if (ringId !== currentRingId) {
-      currentRingId = ringId;
+  rows.forEach((row, i) => {
+    if (row.ringId !== currentRingId) {
+      currentRingId = row.ringId;
       if (i > 0) y += headingTopGap;
       doc.setFontSize(headingFs);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(26, 35, 50);
-      const ringName = entry.ring ? entry.ring.name : '—';
-      doc.text(ringName.toUpperCase(), xLeft, y);
+      doc.text(row.ringName.toUpperCase(), xLeft, y);
       y += lineH;
     }
     if (y > pageH - 8) return; // out of room
     doc.setFontSize(itemFs);
     doc.setFont('helvetica', 'normal');
-    const ringColor = entry.ring ? entry.ring.color : '#888';
-    const rgb = hexToRgb(effectiveActivityColor(entry.act, ringColor, i));
+    const rgb = hexToRgb(row.color);
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
-    if (isMilestone(entry.act)) {
+    if (row.milestone) {
       doc.circle(xLeft + swatch / 2, y - swatch / 2 + 0.3, swatch / 2, 'F');
     } else {
       doc.rect(xLeft, y - swatch + 0.3, swatch, swatch, 'F');
     }
     doc.setTextColor(60, 70, 90);
-    const label = `${i + 1}. ${entry.act.name} · ${legendWhenLabel(entry.act)}`;
+    const label = row.text;
     const truncated = doc.splitTextToSize(label, colWidth - swatch - 4)[0] || label;
     doc.text(truncated, xLeft + swatch + 2, y);
     y += lineH;
@@ -2969,7 +3153,7 @@ async function exportWheelPPT() {
       align: 'center', valign: 'middle', bold: false,
     });
 
-    if (wantsSideLegend()) {
+    if (wantsListLegend()) {
       // Wheel on the right, legend on the left
       const imgSize = 6.45;
       slide.addImage({
@@ -3151,8 +3335,8 @@ async function exportWheelICS() {
 }
 
 function addPptLegendAgenda(slide, slideW, slideH) {
-  const ordered = orderedAgendaActivities();
-  if (!ordered.length) return;
+  const rows = listLegendRows();
+  if (!rows.length) return;
   const xLeft = 0.3;
   const colWidth = 6.0; // wheel takes 6.45 + 0.25 = 6.7 on the right
   const swatch = 0.12;
@@ -3163,13 +3347,11 @@ function addPptLegendAgenda(slide, slideW, slideH) {
   let y = 0.7;
 
   let currentRingId = null;
-  ordered.forEach((entry, i) => {
-    const ringId = entry.ring ? entry.ring.id : '__orphan__';
-    if (ringId !== currentRingId) {
-      currentRingId = ringId;
+  rows.forEach((row, i) => {
+    if (row.ringId !== currentRingId) {
+      currentRingId = row.ringId;
       if (i > 0) y += headingTopGap;
-      const ringName = entry.ring ? entry.ring.name : '—';
-      slide.addText(ringName.toUpperCase(), {
+      slide.addText(row.ringName.toUpperCase(), {
         x: xLeft, y, w: colWidth, h: lineH,
         fontSize: headingFs, fontFace: 'Calibri', color: '1A2332',
         bold: true, valign: 'middle',
@@ -3177,14 +3359,13 @@ function addPptLegendAgenda(slide, slideW, slideH) {
       y += lineH;
     }
     if (y > slideH - lineH) return; // out of room
-    const ringColorPpt = entry.ring ? entry.ring.color : '#888';
-    const colorHex = effectiveActivityColor(entry.act, ringColorPpt, i).replace('#', '');
-    slide.addShape(isMilestone(entry.act) ? 'ellipse' : 'rect', {
+    const colorHex = row.color.replace('#', '');
+    slide.addShape(row.milestone ? 'ellipse' : 'rect', {
       x: xLeft, y: y + (lineH - swatch) / 2, w: swatch, h: swatch,
       fill: { color: colorHex },
       line: { color: colorHex, width: 0 },
     });
-    const pptLabel = `${i + 1}. ${entry.act.name} · ${legendWhenLabel(entry.act)}`;
+    const pptLabel = row.text;
     slide.addText(pptLabel, {
       x: xLeft + swatch + 0.08, y, w: colWidth - swatch - 0.1, h: lineH,
       fontSize: itemFs, fontFace: 'Calibri', color: '3C465A',

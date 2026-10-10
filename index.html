@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HR Årshjul</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
-  <link rel="stylesheet" href="fonts/fonts.css?v=78" />
+  <link rel="stylesheet" href="fonts/fonts.css?v=79" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="style.css?v=78" />
-  <script src="vendor/supabase.js?v=78" defer></script>
-  <script src="vendor/jspdf.umd.min.js?v=78" defer></script>
-  <script src="vendor/pptxgen.bundle.js?v=78" defer></script>
-  <script src="vendor/xlsx.full.min.js?v=78" defer></script>
+  <link rel="stylesheet" href="style.css?v=79" />
+  <script src="vendor/supabase.js?v=79" defer></script>
+  <script src="vendor/jspdf.umd.min.js?v=79" defer></script>
+  <script src="vendor/pptxgen.bundle.js?v=79" defer></script>
+  <script src="vendor/xlsx.full.min.js?v=79" defer></script>
 </head>
 <body>
   <!-- Login screen — shown when no user is signed in -->
@@ -124,6 +124,7 @@
             <button type="button" class="dropdown-item layout-option" data-layout="agenda" data-i18n="layout.agenda">Agenda</button>
             <div class="dropdown-sep"></div>
             <button type="button" class="dropdown-item label-position-option" id="labelSideToggle"><span class="check">✓</span> <span data-i18n="layout.labelSide">Text vid sidan</span></button>
+            <button type="button" class="dropdown-item label-position-option" id="showDatesToggle"><span class="check">✓</span> <span data-i18n="layout.showDates">Visa datum</span></button>
           </div>
         </div>
         <div class="lang-toggle lang-toggle-topbar" role="group" data-i18n-aria-label="lang.toggleAria" aria-label="Välj språk">
@@ -264,6 +265,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="app.js?v=78" defer></script>
+  <script src="app.js?v=79" defer></script>
 </body>
 </html>
